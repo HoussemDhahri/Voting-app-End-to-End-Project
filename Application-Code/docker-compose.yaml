@@ -1,0 +1,150 @@
+version: "3.8"
+
+services:
+
+  # =========================
+  # Redis (Queue broker)
+  # =========================
+  redis:
+    image: redis:alpine
+    container_name: redis-container
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - voting-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # =========================
+  # PostgreSQL DB
+  # =========================
+  db:
+    image: postgres:14
+    container_name: postgres-container
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - voting-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # =========================
+  # Vote Service (Python Flask)
+  # =========================
+  vote:
+    build: ./vote
+    container_name: vote-container
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      OPTION_A: Cats
+      OPTION_B: Dogs
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - voting-network
+
+  # =========================
+  # Worker (.NET)
+  # =========================
+  worker:
+    build: ./worker
+    container_name: worker-container
+    restart: unless-stopped
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      DB_HOST: db
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: postgres
+    depends_on:
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    networks:
+      - voting-network
+
+  # =========================
+  # Result (Node.js)
+  # =========================
+  result:
+    build: ./result
+    container_name: result-container
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      PGHOST: db
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+      PGPORT: 5432
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - voting-network
+
+  # =========================
+  # Redis UI
+  # =========================
+  redis-ui:
+    image: redis/redisinsight:latest
+    container_name: redis-ui
+    restart: unless-stopped
+    ports:
+      - "5540:5540"
+    networks:
+      - voting-network
+
+  # =========================
+  # Postgres UI (pgAdmin)
+  # =========================
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin-ui
+    restart: unless-stopped
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - voting-network
+
+# =========================
+# Volumes
+# =========================
+volumes:
+  pg_data:
+
+# =========================
+# Network
+# =========================
+networks:
+  voting-network:
+    driver: bridge
