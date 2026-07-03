@@ -1,42 +1,27 @@
-# Logs
-logs
-*.log
-npm-debug.log*
+# Git
+.git
+.gitignore
 
-# Runtime data
-pids
-*.pid
-*.seed
-*.pid.lock
+# Build output
+bin/
+obj/
 
-# Directory used by npm
-node_modules
-npm-debug.log
+# User files
+*.user
+*.rsuser
+*.suo
 
-# Directory used by yarn
-yarn-error.log
-
-# Optional npm cache directory
-.npm
-
-# Optional eslint cache
-.eslintcache
-
-# Optional REPL history
-.node_repl_history
-
-# IDE / editor directories
+# IDE
 .vscode/
 .idea/
-*.swp
-*.swo
-*.swn
-*.bak
 
-# OS generated files
+# Environment
+.env
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+
+# OS
 .DS_Store
 Thumbs.db
-*.lock
-
-# Build DIR
-build
