@@ -1,0 +1,405 @@
+pipeline {
+    agent any
+
+    triggers {
+        githubPush()
+    }
+
+    parameters {
+        booleanParam(
+            name: 'APPLY_PROD',
+            defaultValue: false,
+            description: 'Deploy to Production?'
+        )
+    }
+
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '2'))
+        timestamps()
+        timeout(time: 60, unit: 'MINUTES')
+        disableConcurrentBuilds()
+    }
+
+    environment {
+
+        // App
+        APP_NAME     = 'voting-vote'
+        GITHUB_URL   = 'https://github.com/HoussemDhahri/Voting-app-End-to-End-Project.git'
+        APP_DIR      = 'Application-Code/vote'
+
+        // SonarQube
+        SONAR_PROJECT = 'Voting-Vote'
+        SONAR_SERVER  = 'SonarQube-Server'
+
+        // Docker
+        DOCKER_REPO  = 'houssemdhahri93'
+        DOCKER_IMAGE = "${DOCKER_REPO}/${APP_NAME}"
+
+        // Credentials
+        DOCKER_CREDS_ID = 'Dockerhub'
+        GITHUB_CREDS_ID = 'github-token'
+
+        // GitOps repo path
+        K8S_REPO_PATH = 'Kubernetes-Manifests-file'
+        K8S_STAGING   = 'Kubernetes-Manifests-file/overlays/staging'
+        K8S_PROD      = 'Kubernetes-Manifests-file/overlays/prod'
+
+        // Staging / Prod URLs (Ingress)
+        STAGING_URL = 'http://myapp-staging.local'
+        PROD_URL    = 'http://myapp-prod.local'
+
+        GIT_USER_NAME  = 'Houssem Dhahri'
+        GIT_USER_EMAIL = 'voting@pipeline.local'
+        GITOPS_BRANCH  = 'main'
+
+    }
+
+    stages {
+
+        stage('🧹 Clean Workspace') {
+            steps {
+                cleanWs()
+            }
+        }
+
+        stage('📥 Checkout') {
+            steps {
+                git branch: 'main',
+                    credentialsId: "${GITHUB_CREDS_ID}",
+                    url: "${GITHUB_URL}"
+            }
+        }
+
+        stage('🏷️ Set Image Tag') {
+            steps {
+                script {
+                    sh 'git fetch --tags --force'
+
+                    def gitTag = sh(
+                        script: 'git describe --tags --abbrev=0 || true',
+                        returnStdout: true
+                    ).trim()
+
+                    if (gitTag) {
+                        env.IMAGE_TAG = gitTag
+                    } else {
+                        def sha = sh(
+                            script: 'git rev-parse --short HEAD',
+                            returnStdout: true
+                        ).trim()
+                        env.IMAGE_TAG = "sha-${sha}"
+                    }
+
+                    env.IMAGE_FULL = "${DOCKER_IMAGE}:${env.IMAGE_TAG}"
+                    currentBuild.displayName = "#${BUILD_NUMBER} | ${env.IMAGE_TAG}"
+                }
+            }
+        }
+
+        stage('⚙️ Install Dependencies') {
+            agent {
+                docker {
+                    image 'python:3.11-slim'
+                    args '-v /var/run/docker.sock:/var/run/docker.sock'
+                    reuseNode true
+                }
+            }
+            steps {
+                dir("${env.APP_DIR?.trim() ? env.APP_DIR : '.'}") {
+                    sh '''
+                        python3 --version
+                        pip3 --version
+                        python3 -m venv venv
+                        . venv/bin/activate
+                        pip install --no-cache-dir -r requirements.txt
+                    '''
+                }
+            }
+        }
+
+        stage('⚡ Quality Checks') {
+            parallel {
+
+                stage('🔎 Lint') {
+                    agent {
+                        docker {
+                            image 'python:3.11-slim'
+                            args '-v /var/run/docker.sock:/var/run/docker.sock'
+                            reuseNode true
+                        }
+                    }
+                    steps {
+                        dir("${env.APP_DIR?.trim() ? env.APP_DIR : '.'}") {
+                            sh '''
+                                . venv/bin/activate
+                                pip install flake8
+                                flake8 . || true
+                            '''
+                        }
+                    }
+                }
+
+                stage('🧪 Unit Tests') {
+                    agent {
+                        docker {
+                            image 'python:3.11-slim'
+                            args '-v /var/run/docker.sock:/var/run/docker.sock'
+                            reuseNode true
+                        }
+                    }
+                    steps {
+                        dir("${env.APP_DIR?.trim() ? env.APP_DIR : '.'}") {
+                            sh '''
+                                . venv/bin/activate
+                                pip install pytest pytest-cov
+                                pytest --cov=. --cov-report=xml --junitxml=coverage/junit.xml || true
+                            '''
+                        }
+                    }
+                    post {
+                        always {
+                            junit allowEmptyResults: true, testResults: 'coverage/junit.xml'
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('🔬 Trivy FS Scan') {
+            steps {
+                dir("${env.APP_DIR?.trim() ? env.APP_DIR : '.'}") {
+                    sh '''
+
+                        mkdir -p $HOME/.cache/trivy/db
+
+                        trivy fs \
+                            --scanners vuln,secret \
+                            --severity HIGH,CRITICAL \
+                            --exit-code 0 \
+                            --format json \
+                            --output trivy-fs-report.json \
+                            --cache-dir $HOME/.cache/trivy \
+                            --timeout 10m \
+                            .
+                    '''
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: '**/trivy-fs-report.json'
+                }
+            }
+        }
+
+        stage('📊 SonarQube Analysis') {
+            agent {
+                docker {
+                    image 'sonarsource/sonar-scanner-cli:latest'
+                    args '--network jenkins-sonarqube'
+                    reuseNode true
+                }
+            }
+        
+            steps {
+                dir("${env.APP_DIR}") {
+                    withSonarQubeEnv("${SONAR_SERVER}") {
+                        sh '''
+                            sonar-scanner \
+                              -Dsonar.projectKey=${SONAR_PROJECT} \
+                              -Dsonar.projectName=${APP_NAME} \
+                              -Dsonar.projectVersion=${IMAGE_TAG} \
+                              -Dsonar.sources=. \
+                              -Dsonar.python.coverage.reportPaths=coverage.xml \
+                              -Dsonar.exclusions=**/venv/**,**/coverage/**,**/*_test.py
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('🚦 Quality Gate') {
+            steps {
+                timeout(time: 10, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+        stage('🐳 Docker Build') {
+            steps {
+                dir("${env.APP_DIR?.trim() ? env.APP_DIR : '.'}") {
+                    sh '''
+                        docker pull ${DOCKER_IMAGE}:latest || true
+
+                        docker build \
+                          --label image.tag=${IMAGE_TAG} \
+                          --label ci.build=${BUILD_NUMBER} \
+                          --label build.date=$(date -u +%Y-%m-%dT%H:%M:%SZ) \
+                          -t ${DOCKER_IMAGE}:${IMAGE_TAG} \
+                          -t ${DOCKER_IMAGE}:latest \
+                          .
+                    '''
+                }
+            }
+        }
+
+        stage('🔬 Trivy Image Scan') {
+            steps {
+                dir("${env.APP_DIR?.trim() ? env.APP_DIR : '.'}") {
+                    sh '''
+                        trivy image \
+                          --severity HIGH,CRITICAL \
+                          --exit-code 0 \
+                          --format json \
+                          --scanners vuln \
+                          --timeout 15m \
+                          --output trivy-image-report.json \
+                          --no-progress \
+                          ${DOCKER_IMAGE}:${IMAGE_TAG}
+
+                        trivy image \
+                          --severity CRITICAL \
+                          --exit-code 1 \
+                          --scanners vuln \
+                          --timeout 15m \
+                          --no-progress \
+                          ${DOCKER_IMAGE}:${IMAGE_TAG}
+
+                        trivy image \
+                          --format cyclonedx \
+                          --output trivy-sbom.json \
+                          --timeout 15m \
+                          --no-progress \
+                          ${DOCKER_IMAGE}:${IMAGE_TAG}
+                    '''
+                }
+            }
+
+            post {
+                always {
+                    archiveArtifacts artifacts: '**/trivy-*.json', allowEmptyArchive: true
+                }
+            }
+        }
+
+        stage('📤 Push to DockerHub') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: "${DOCKER_CREDS_ID}",
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+
+                    sh '''
+                        set +x
+                        echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                        set -x
+
+                        docker push ${DOCKER_IMAGE}:${IMAGE_TAG}
+                        docker push ${DOCKER_IMAGE}:latest
+
+                    '''
+                }
+            }
+            post {
+                always {
+                    sh 'docker logout || true'
+                }
+            }            
+        }
+
+        stage('🔄 Update Staging') {
+          steps {
+            withCredentials([usernamePassword(
+              credentialsId: "${GITHUB_CREDS_ID}",
+              usernameVariable: 'GIT_USER',
+              passwordVariable: 'GIT_TOKEN'
+            )]) {
+
+              sh '''
+                set -e
+
+                git config user.name "${GIT_USER_NAME}"
+                git config user.email "${GIT_USER_EMAIL}"
+
+                git pull origin ${GITOPS_BRANCH} --rebase
+
+                cd ${K8S_STAGING}
+
+                kustomize edit set image ${DOCKER_IMAGE}=${IMAGE_FULL}
+
+                cd -
+
+                git add ${K8S_STAGING}/kustomization.yaml
+
+                git commit -m "ci: update staging image to ${IMAGE_TAG} [build ${BUILD_NUMBER}]" || echo "No changes to commit"
+
+                git remote set-url origin https://${GIT_USER}:${GIT_TOKEN}@github.com/HoussemDhahri/Voting-app-End-to-End-Project.git
+
+                git push origin ${GITOPS_BRANCH}
+              '''
+            }
+          }
+        }
+
+        stage('✋Approve Prod') {
+          when { expression { params.APPLY_PROD } }
+          steps {
+                input message: "🚀 Deploy image ${env.IMAGE_FULL} to PRODUCTION?",
+                      ok: "Yes, deploy!"
+          }
+        }
+
+        stage('🔄 Update Prod') {
+          when { expression { params.APPLY_PROD } }
+
+          steps {
+            withCredentials([usernamePassword(
+              credentialsId: "${GITHUB_CREDS_ID}",
+              usernameVariable: 'GIT_USER',
+              passwordVariable: 'GIT_TOKEN'
+            )]) {
+
+              sh '''
+                set -e
+
+                git config user.name "${GIT_USER_NAME}"
+                git config user.email "${GIT_USER_EMAIL}"
+
+                git pull origin ${GITOPS_BRANCH} --rebase
+
+                cd ${K8S_PROD}
+
+                kustomize edit set image ${DOCKER_IMAGE}=${IMAGE_FULL}
+
+                cd -
+
+                git add ${K8S_PROD}/kustomization.yaml
+
+                git commit -m "ci: update prod image to ${IMAGE_TAG} [build ${BUILD_NUMBER}]" || echo "No changes to commit"
+
+                git remote set-url origin https://${GIT_USER}:${GIT_TOKEN}@github.com/HoussemDhahri/Voting-app-End-to-End-Project.git
+
+                git push origin ${GITOPS_BRANCH}
+              '''
+            }
+          }
+        }
+
+    }
+
+    post {
+
+        success {
+            echo "✅ Pipeline passed — image: ${env.IMAGE_FULL} — ArgoCD syncing..."
+        }
+
+        failure {
+            echo "❌ Pipeline FAILED "
+        }
+
+        unstable {
+            echo "⚠️ Pipeline UNSTABLE — image: ${env.IMAGE_FULL}"
+        }
+    }
+}
