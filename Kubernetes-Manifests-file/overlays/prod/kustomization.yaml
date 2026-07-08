@@ -13,4 +13,4 @@ images:
   newTag: v1.0.0
 - name: houssemdhahri93/voting-worker
   newName: houssemdhahri93/voting-worker
-  newTag: v1.0.1
+  newTag: v1.0.0
