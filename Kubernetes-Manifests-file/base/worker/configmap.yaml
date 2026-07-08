@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: worker-config
+data:
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+  DB_HOST: "voting-db"
+  DB_USER: "houssem"
+  DB_NAME: "houssem-postgres"
