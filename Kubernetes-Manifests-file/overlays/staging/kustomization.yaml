@@ -8,6 +8,9 @@ resources:
 - ../../base/postgres
 - ../../base/redis
 images:
+- name: houssemdhahri93/voting-result
+  newName: houssemdhahri93/voting-result
+  newTag: v1.0.0
 - name: houssemdhahri93/voting-worker
   newName: houssemdhahri93/voting-worker
   newTag: v1.0.1
