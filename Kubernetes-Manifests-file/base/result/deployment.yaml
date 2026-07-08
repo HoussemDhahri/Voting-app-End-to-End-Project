@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: result-deployment
+  labels:
+    app: result-app
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: result-app
+
+  template:
+    metadata:
+      labels:
+        app: result-app
+
+    spec:
+      containers:
+        - name: result-container
+          image: houssemdhahri93/voting-result
+          imagePullPolicy: Always
+          
+          ports:
+            - containerPort: 4000
+
+          envFrom:
+            - configMapRef:
+                name: result-config
+            - secretRef:
+                name: result-secret
+
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "250m"
+              memory: "256Mi"

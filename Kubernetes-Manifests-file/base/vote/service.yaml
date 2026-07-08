@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: vote-service
+  labels:
+    app: voting-app
+
+spec:
+  selector:
+    app: voting-app
+
+  ports:
+    - protocol: TCP
+      port: 5000
+      targetPort: 5000
+      
+  type: ClusterIP

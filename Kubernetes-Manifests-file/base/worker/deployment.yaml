@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker-deployment
+  labels:
+    app: worker-app
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: worker-app
+
+  template:
+    metadata:
+      labels:
+        app: worker-app
+        
+    spec:
+      containers:
+        - name: worker-container
+          image: houssemdhahri93/voting-worker
+          imagePullPolicy: Always
+
+          envFrom:
+            - configMapRef:
+                name: worker-config
+            - secretRef:
+                name: worker-secret
+
+          resources:
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+            requests:
+              cpu: "100m"
+              memory: "64Mi"
