@@ -7,6 +7,9 @@ resources:
 - ../../base/worker
 - ../../base/postgres
 - ../../base/redis
+- hpa-vote.yaml
+- hpa-result.yaml
+- hpa-worker.yaml
 images:
 - name: houssemdhahri93/voting-result
   newName: houssemdhahri93/voting-result
