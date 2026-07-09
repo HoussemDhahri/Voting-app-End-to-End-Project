@@ -1,11 +1,12 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
-  name: redis-deployment
+  name: redis-statefulset
   labels:
     app: redis-app
 
 spec:
+  serviceName: redis
   replicas: 1
 
   selector:
@@ -22,6 +23,14 @@ spec:
         - name: redis-container
           image: redis:alpine
           imagePullPolicy: Always
+
+          args:
+            - "--appendonly"
+            - "yes"
+
+          volumeMounts:
+            - name: redis-data
+              mountPath: /data
           
           ports:
             - containerPort: 6379
@@ -33,3 +42,8 @@ spec:
             limits:
               cpu: "200m"
               memory: "256Mi"
+
+      volumes:
+        - name: redis-data
+          persistentVolumeClaim:
+            claimName: redis-pvc
