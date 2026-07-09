@@ -1,0 +1,60 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-backup
+spec:
+  schedule: "0 2 * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+
+          containers:
+            - name: postgres-backup
+              image: postgres:13-alpine
+
+              envFrom:
+                - configMapRef:
+                    name: postgres-backup-config
+                - secretRef:
+                    name: postgres-secret
+
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  mkdir -p /backup
+
+                  FILE="/backup/${POSTGRES_DB}-$(date +%Y%m%d-%H%M%S).sql"
+
+                  pg_dump \
+                    -h ${POSTGRES_HOST} \
+                    -U ${POSTGRES_USER} \
+                    -d ${POSTGRES_DB} \
+                  | gzip > ${FILE}.gz
+
+                  echo "Backup created: ${FILE}.gz"
+
+                  find /backup -name "*.sql.gz" -mtime +3 -delete
+                  echo "Old backups cleaned (retention: 3 days)"
+
+              volumeMounts:
+                - name: backup-storage
+                  mountPath: /backup
+
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+
+          volumes:
+            - name: backup-storage
+              persistentVolumeClaim:
+                claimName: postgres-backup-pvc

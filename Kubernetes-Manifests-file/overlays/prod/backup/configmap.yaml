@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-backup-config
+
+data:
+  POSTGRES_HOST: postgres-service
