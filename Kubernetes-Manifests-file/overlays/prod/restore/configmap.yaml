@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-restore-config
+
+data:
+  POSTGRES_HOST: postgres-service
+  BACKUP_FILE: houssem-postgres-20260710-020001.sql.gz

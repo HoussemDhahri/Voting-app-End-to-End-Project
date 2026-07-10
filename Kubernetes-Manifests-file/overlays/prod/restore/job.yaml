@@ -1,0 +1,87 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: postgres-restore
+
+spec:
+  backoffLimit: 1
+
+  template:
+    spec:
+      restartPolicy: Never
+
+      containers:
+        - name: postgres-restore
+
+          image: postgres:13-alpine
+
+          envFrom:
+            - configMapRef:
+                name: postgres-restore-config
+
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: postgres-config
+                  key: DB_USER
+
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: postgres-config
+                  key: DB_NAME
+
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: DB_PASSWORD
+
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+
+              echo "Starting PostgreSQL Restore..."
+
+              echo "Restoring backup: ${BACKUP_FILE}"
+
+
+              echo "Cleaning database..."
+
+              psql \
+                -h ${POSTGRES_HOST} \
+                -U ${POSTGRES_USER} \
+                -d ${POSTGRES_DB} \
+                -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+
+
+              echo "Importing backup..."
+
+              gunzip -c /backup/${BACKUP_FILE} | \
+              psql \
+                -h ${POSTGRES_HOST} \
+                -U ${POSTGRES_USER} \
+                -d ${POSTGRES_DB}
+
+
+              echo "Restore completed successfully."
+
+          volumeMounts:
+            - name: backup-storage
+              mountPath: /backup
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+
+      volumes:
+        - name: backup-storage
+          persistentVolumeClaim:
+            claimName: postgres-backup-pvc
