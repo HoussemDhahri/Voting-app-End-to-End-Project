@@ -20,8 +20,25 @@ spec:
               envFrom:
                 - configMapRef:
                     name: postgres-backup-config
-                - secretRef:
-                    name: postgres-secret
+
+              env:
+                - name: POSTGRES_USER
+                  valueFrom:
+                    configMapKeyRef:
+                      name: postgres-config
+                      key: DB_USER
+
+                - name: POSTGRES_DB
+                  valueFrom:
+                    configMapKeyRef:
+                      name: postgres-config
+                      key: DB_NAME
+
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-secret
+                      key: DB_PASSWORD
 
               command:
                 - /bin/sh
