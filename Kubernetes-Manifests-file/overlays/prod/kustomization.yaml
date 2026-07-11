@@ -5,6 +5,7 @@ resources:
   - ../../base
   - hpa
   - backup
+  - secrets
 
 images:
 
