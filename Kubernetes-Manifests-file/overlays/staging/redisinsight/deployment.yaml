@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redisinsight-deployment
+  labels:
+    app: redisinsight-app
+
+spec:
+  replicas: 1
+  
+  selector:
+    matchLabels:
+      app: redisinsight-app
+      
+  template:
+    metadata:
+      labels:
+        app: redisinsight-app
+
+    spec:
+      containers:
+        - name: redisinsight
+          image: redis/redisinsight:latest
+          imagePullPolicy: Always
+          
+          ports:
+            - containerPort: 5540
+
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
