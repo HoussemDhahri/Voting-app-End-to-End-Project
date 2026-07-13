@@ -6,6 +6,7 @@ resources:
   - hpa
   - backup
   - secrets
+  - ingress
 
 images:
 
