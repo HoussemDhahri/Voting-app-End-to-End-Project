@@ -48,10 +48,6 @@ pipeline {
         K8S_STAGING   = 'Kubernetes-Manifests-file/overlays/staging'
         K8S_PROD      = 'Kubernetes-Manifests-file/overlays/prod'
 
-        // Staging / Prod URLs (Ingress)
-        STAGING_URL = 'http://myapp-staging.local'
-        PROD_URL    = 'http://myapp-prod.local'
-
         GIT_USER_NAME  = 'Houssem Dhahri'
         GIT_USER_EMAIL = 'voting@pipeline.local'
         GITOPS_BRANCH  = 'main'
