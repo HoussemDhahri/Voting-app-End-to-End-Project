@@ -1,0 +1,209 @@
+apiVersion: v1
+kind: ConfigMap
+
+metadata:
+  name: grafana-dashboard-voting-overview
+  labels:
+    grafana_dashboard: "1"
+
+data:
+  voting-app-overview.json: |
+    {
+      "title": "Voting App Overview",
+      "tags": ["voting-app"],
+      "timezone": "browser",
+      "schemaVersion": 39,
+      "version": 1,
+      "refresh": "30s",
+      "time": {
+        "from": "now-6h",
+        "to": "now"
+      },
+
+      "templating": {
+        "list": [
+          {
+            "name": "datasource",
+            "type": "datasource",
+            "query": "prometheus",
+            "current": {}
+          },
+          {
+            "name": "namespace",
+            "type": "query",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${datasource}"
+            },
+            "definition": "label_values(up, namespace)",
+            "query": "label_values(up, namespace)",
+            "refresh": 1,
+            "multi": false,
+            "includeAll": false
+          }
+        ]
+      },
+
+      "panels": [
+
+        {
+          "id": 1,
+          "title": "Vote Requests / sec",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "expr": "rate(vote_requests_total[5m])",
+              "legendFormat": "vote requests"
+            }
+          ],
+          "gridPos": {
+            "x":0,
+            "y":0,
+            "w":12,
+            "h":8
+          }
+        },
+
+
+        {
+          "id": 2,
+          "title": "Total Votes",
+          "type": "stat",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "expr": "sum(votes_total)"
+            }
+          ],
+          "gridPos": {
+            "x":12,
+            "y":0,
+            "w":12,
+            "h":8
+          }
+        },
+
+
+        {
+          "id": 3,
+          "title": "Vote Errors",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "expr": "rate(vote_errors_total[5m])",
+              "legendFormat": "errors"
+            }
+          ],
+          "gridPos": {
+            "x":0,
+            "y":8,
+            "w":12,
+            "h":8
+          }
+        },
+
+
+        {
+          "id": 4,
+          "title": "Result Requests / sec",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "expr": "rate(result_requests_total[5m])",
+              "legendFormat": "requests"
+            }
+          ],
+          "gridPos": {
+            "x":12,
+            "y":8,
+            "w":12,
+            "h":8
+          }
+        },
+
+
+        {
+          "id": 5,
+          "title": "Vote Pod CPU",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"$namespace\",pod=~\"vote-deployment.*\"}[5m])) by (pod)",
+              "legendFormat": "{{pod}}"
+            }
+          ],
+          "gridPos": {
+            "x":0,
+            "y":16,
+            "w":12,
+            "h":8
+          }
+        },
+
+
+        {
+          "id": 6,
+          "title": "Result Pod CPU",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"$namespace\",pod=~\"result-deployment.*\"}[5m])) by (pod)",
+              "legendFormat": "{{pod}}"
+            }
+          ],
+          "gridPos": {
+            "x":12,
+            "y":16,
+            "w":12,
+            "h":8
+          }
+        },
+
+
+        {
+          "id": 7,
+          "title": "Pod Restarts",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "expr": "kube_pod_container_status_restarts_total{namespace=\"$namespace\",pod=~\"(vote|result)-deployment.*\"}",
+              "legendFormat": "{{pod}}"
+            }
+          ],
+          "gridPos": {
+            "x":0,
+            "y":24,
+            "w":24,
+            "h":8
+          }
+        }
+
+      ]
+    }

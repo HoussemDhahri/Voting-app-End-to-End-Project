@@ -1,0 +1,195 @@
+apiVersion: v1
+kind: ConfigMap
+
+metadata:
+  name: grafana-dashboard-result
+  labels:
+    grafana_dashboard: "1"
+
+data:
+  result-dashboard.json: |
+    {
+      "title": "Voting App - Result Service",
+      "tags": [
+        "voting-app",
+        "result"
+      ],
+      "timezone": "browser",
+      "schemaVersion": 39,
+      "version": 1,
+      "refresh": "30s",
+
+      "time": {
+        "from": "now-6h",
+        "to": "now"
+      },
+
+      "templating": {
+        "list": [
+          {
+            "name": "datasource",
+            "type": "datasource",
+            "query": "prometheus",
+            "current": {}
+          },
+          {
+            "name": "namespace",
+            "type": "query",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${datasource}"
+            },
+            "definition": "label_values(up, namespace)",
+            "query": "label_values(up, namespace)",
+            "refresh": 1,
+            "current": {}
+          }
+        ]
+      },
+
+      "panels": [
+
+        {
+          "id": 1,
+          "title": "Result Requests / sec",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "expr": "rate(result_requests_total[5m])",
+              "legendFormat": "requests"
+            }
+          ],
+          "gridPos": {
+            "x": 0,
+            "y": 0,
+            "w": 12,
+            "h": 8
+          }
+        },
+
+
+        {
+          "id": 2,
+          "title": "Result Errors / sec",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "expr": "rate(result_errors_total[5m])",
+              "legendFormat": "errors"
+            }
+          ],
+          "gridPos": {
+            "x": 12,
+            "y": 0,
+            "w": 12,
+            "h": 8
+          }
+        },
+
+
+        {
+          "id": 3,
+          "title": "PostgreSQL Query Latency",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "expr": "rate(result_query_duration_seconds_sum[5m]) / rate(result_query_duration_seconds_count[5m])",
+              "legendFormat": "query latency"
+            }
+          ],
+          "gridPos": {
+            "x": 0,
+            "y": 8,
+            "w": 12,
+            "h": 8
+          }
+        },
+
+
+        {
+          "id": 4,
+          "title": "Result Pod CPU Usage",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"$namespace\",pod=~\"result-deployment.*\"}[5m])) by(pod)",
+              "legendFormat": "{{pod}}"
+            }
+          ],
+          "gridPos": {
+            "x": 12,
+            "y": 8,
+            "w": 12,
+            "h": 8
+          }
+        },
+
+
+        {
+          "id": 5,
+          "title": "Result Pod Memory Usage",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "expr": "container_memory_working_set_bytes{namespace=\"$namespace\",pod=~\"result-deployment.*\"}",
+              "legendFormat": "{{pod}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes"
+            }
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 16,
+            "w": 12,
+            "h": 8
+          }
+        },
+
+
+        {
+          "id": 6,
+          "title": "Result Pod Restarts",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "expr": "kube_pod_container_status_restarts_total{namespace=\"$namespace\",pod=~\"result-deployment.*\"}",
+              "legendFormat": "{{pod}}"
+            }
+          ],
+          "gridPos": {
+            "x": 12,
+            "y": 16,
+            "w": 12,
+            "h": 8
+          }
+        }
+
+      ]
+    }
