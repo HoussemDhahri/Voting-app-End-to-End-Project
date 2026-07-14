@@ -5,5 +5,5 @@ metadata:
 data:
   OPTION_A: "Cats"
   OPTION_B: "Dogs"
-  REDIS_HOST: "redis"
+  REDIS_HOST: "redis-service"
   REDIS_PORT: "6379"

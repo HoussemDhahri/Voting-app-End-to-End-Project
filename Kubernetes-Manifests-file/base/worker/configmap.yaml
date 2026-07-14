@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: worker-config
 data:
-  REDIS_HOST: "redis"
+  REDIS_HOST: "redis-service"
   REDIS_PORT: "6379"
   DB_HOST: "postgres-service"
   DB_USER: "houssem"
