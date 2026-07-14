@@ -11,7 +11,8 @@ spec:
     app: result-app
 
   ports:
-    - protocol: TCP
+    - name: http
+      protocol: TCP
       port: 4000
       targetPort: 4000
       
