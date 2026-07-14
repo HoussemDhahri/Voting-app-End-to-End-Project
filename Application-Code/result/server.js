@@ -25,7 +25,7 @@ const port = process.env.PORT || 4000;
 const register = new client.Registry();
 
 client.collectDefaultMetrics({
-  register: register
+  register
 });
 
 
@@ -54,19 +54,20 @@ register.registerMetric(resultQueryDuration);
 
 
 // ==========================
-// Socket.io
+// Socket.IO
 // ==========================
 
-io.on('connection', function(socket) {
+io.on('connection', (socket) => {
 
-  console.log("Client connected");
+  console.log('Client connected');
+
 
   socket.emit('message', {
     text: 'Welcome!'
   });
 
 
-  socket.on('subscribe', function(data) {
+  socket.on('subscribe', (data) => {
 
     socket.join(data.channel);
 
@@ -78,7 +79,7 @@ io.on('connection', function(socket) {
 
 
 // ==========================
-// PostgreSQL
+// PostgreSQL Connection
 // ==========================
 
 const pool = new Pool({
@@ -97,54 +98,61 @@ const pool = new Pool({
 
 
 
-// Wait for database
+// ==========================
+// Wait For Database
+// ==========================
 
 async.retry(
 
   {
-    times:1000,
-    interval:1000
+    times: 1000,
+    interval: 1000
   },
 
 
-  async function(callback){
+  function(callback){
 
-    try {
 
-      const client = await pool.connect();
+    pool.connect()
 
-      client.release();
+      .then((client)=>{
 
-      callback(null);
+        client.release();
 
-    }
+        callback(null);
 
-    catch(err){
+      })
 
-      console.log("Waiting for db");
 
-      callback(err);
+      .catch((err)=>{
 
-    }
+        console.log('Waiting for db');
+
+        callback(err);
+
+      });
+
 
   },
 
 
   function(err){
 
+
     if(err){
 
-      console.error("Giving up");
+      console.error('Giving up');
 
       process.exit(1);
 
     }
 
 
-    console.log("Connected to db");
+    console.log('Connected to db');
 
 
     getVotes();
+
 
   }
 
@@ -154,7 +162,7 @@ async.retry(
 
 
 // ==========================
-// Get votes from database
+// Get Votes
 // ==========================
 
 async function getVotes(){
@@ -163,7 +171,7 @@ async function getVotes(){
   const endTimer = resultQueryDuration.startTimer();
 
 
-  try {
+  try{
 
 
     const result = await pool.query(
@@ -179,9 +187,12 @@ async function getVotes(){
     const votes = collectVotesFromResult(result);
 
 
+    console.log('Votes:', votes);
+
+
     io.sockets.emit(
 
-      "scores",
+      'scores',
 
       JSON.stringify(votes)
 
@@ -202,7 +213,7 @@ async function getVotes(){
 
     console.error(
 
-      "Error performing query:",
+      'Error performing query:',
       err
 
     );
@@ -243,7 +254,7 @@ function collectVotesFromResult(result){
   };
 
 
-  result.rows.forEach(function(row){
+  result.rows.forEach((row)=>{
 
 
     votes[row.vote] = parseInt(row.count);
@@ -254,8 +265,8 @@ function collectVotesFromResult(result){
 
   return votes;
 
-}
 
+}
 
 
 
@@ -265,9 +276,13 @@ function collectVotesFromResult(result){
 
 app.use(cookieParser());
 
+
 app.use(express.urlencoded({
+
   extended:true
+
 }));
+
 
 app.use(express.static(
 
@@ -277,27 +292,31 @@ app.use(express.static(
 
 
 
+
 // ==========================
 // Health Check
 // ==========================
 
-app.get('/health', function(req,res){
+app.get('/health',(req,res)=>{
+
 
   res.status(200).json({
 
-    status:"UP"
+    status:'UP'
 
   });
+
 
 });
 
 
 
+
 // ==========================
-// Prometheus endpoint
+// Metrics
 // ==========================
 
-app.get('/metrics', async function(req,res){
+app.get('/metrics',async(req,res)=>{
 
 
   res.set(
@@ -320,11 +339,12 @@ app.get('/metrics', async function(req,res){
 
 
 
+
 // ==========================
-// Result UI
+// Result Page
 // ==========================
 
-app.get('/', function(req,res){
+app.get('/',(req,res)=>{
 
 
   resultRequestsCounter.inc();
@@ -351,10 +371,10 @@ app.get('/', function(req,res){
 
 
 // ==========================
-// Start server
+// Start Server
 // ==========================
 
-server.listen(port,function(){
+server.listen(port,()=>{
 
 
   console.log(
