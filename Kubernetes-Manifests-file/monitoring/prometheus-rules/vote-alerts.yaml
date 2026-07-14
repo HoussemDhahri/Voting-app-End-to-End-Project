@@ -1,0 +1,25 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+
+metadata:
+  name: vote-alerts
+  namespace: monitoring
+  labels:
+    release: monitoring
+
+spec:
+  groups:
+  - name: vote.rules
+
+    rules:
+
+    - alert: VoteApplicationDown
+      expr: up{job="vote-service"} == 0
+      for: 2m
+
+      labels:
+        severity: critical
+
+      annotations:
+        summary: "Vote application is down"
+        description: "Vote service has been unreachable for more than 2 minutes"

@@ -1,0 +1,26 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+
+metadata:
+  name: result-alerts
+  namespace: monitoring
+  labels:
+    release: monitoring
+
+spec:
+
+  groups:
+  - name: result.rules
+
+    rules:
+
+    - alert: ResultApplicationDown
+      expr: up{job="result-service"} == 0
+      for: 2m
+
+      labels:
+        severity: critical
+
+      annotations:
+        summary: "Result application is down"
+        description: "Result service is not responding"
