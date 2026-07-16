@@ -6,3 +6,4 @@ resources:
  - vote-dashboard.yaml
  - result-dashboard.yaml
  - postgres-dashboard.yaml
+ - redis-dashboard.yaml

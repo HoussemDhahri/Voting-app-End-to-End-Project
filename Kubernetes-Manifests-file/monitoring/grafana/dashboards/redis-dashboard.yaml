@@ -1,0 +1,210 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-redis
+  labels:
+    grafana_dashboard: "1"
+
+data:
+  redis-dashboard.json: |
+    {
+      "title": "Voting Redis Dashboard",
+      "tags": [
+        "voting-app",
+        "redis"
+      ],
+      "timezone": "browser",
+      "schemaVersion": 39,
+      "version": 1,
+      "refresh": "30s",
+
+      "time": {
+        "from": "now-6h",
+        "to": "now"
+      },
+
+      "templating": {
+        "list": [
+          {
+            "name": "datasource",
+            "type": "datasource",
+            "query": "prometheus",
+            "current": {}
+          }
+        ]
+      },
+
+      "panels": [
+
+        {
+          "id":1,
+          "title":"Redis Status",
+          "type":"stat",
+          "datasource":{
+            "type":"prometheus",
+            "uid":"${datasource}"
+          },
+          "gridPos":{
+            "x":0,
+            "y":0,
+            "w":6,
+            "h":5
+          },
+          "targets":[
+            {
+              "expr":"redis_up",
+              "legendFormat":"Redis"
+            }
+          ]
+        },
+
+
+        {
+          "id":2,
+          "title":"Connected Clients",
+          "type":"timeseries",
+          "datasource":{
+            "type":"prometheus",
+            "uid":"${datasource}"
+          },
+          "gridPos":{
+            "x":6,
+            "y":0,
+            "w":9,
+            "h":8
+          },
+          "targets":[
+            {
+              "expr":"redis_connected_clients",
+              "legendFormat":"clients"
+            }
+          ]
+        },
+
+
+        {
+          "id":3,
+          "title":"Memory Usage",
+          "type":"timeseries",
+          "datasource":{
+            "type":"prometheus",
+            "uid":"${datasource}"
+          },
+          "gridPos":{
+            "x":15,
+            "y":0,
+            "w":9,
+            "h":8
+          },
+          "targets":[
+            {
+              "expr":"redis_memory_used_bytes",
+              "legendFormat":"memory"
+            }
+          ],
+          "fieldConfig":{
+            "defaults":{
+              "unit":"bytes"
+            }
+          }
+        },
+
+
+        {
+          "id":4,
+          "title":"Commands/sec",
+          "type":"timeseries",
+          "datasource":{
+            "type":"prometheus",
+            "uid":"${datasource}"
+          },
+          "gridPos":{
+            "x":0,
+            "y":8,
+            "w":12,
+            "h":8
+          },
+          "targets":[
+            {
+              "expr":"rate(redis_commands_processed_total[5m])",
+              "legendFormat":"commands/sec"
+            }
+          ]
+        },
+
+
+        {
+          "id":5,
+          "title":"Cache Hit Ratio",
+          "type":"gauge",
+          "datasource":{
+            "type":"prometheus",
+            "uid":"${datasource}"
+          },
+          "gridPos":{
+            "x":12,
+            "y":8,
+            "w":12,
+            "h":8
+          },
+          "targets":[
+            {
+              "expr":
+              "100 * redis_keyspace_hits_total / (redis_keyspace_hits_total + redis_keyspace_misses_total)"
+            }
+          ],
+          "fieldConfig":{
+            "defaults":{
+              "unit":"percent"
+            }
+          }
+        },
+
+
+        {
+          "id":6,
+          "title":"Keys Count",
+          "type":"timeseries",
+          "datasource":{
+            "type":"prometheus",
+            "uid":"${datasource}"
+          },
+          "gridPos":{
+            "x":0,
+            "y":16,
+            "w":12,
+            "h":8
+          },
+          "targets":[
+            {
+              "expr":"redis_db_keys",
+              "legendFormat":"keys"
+            }
+          ]
+        },
+
+
+        {
+          "id":7,
+          "title":"Evicted Keys",
+          "type":"timeseries",
+          "datasource":{
+            "type":"prometheus",
+            "uid":"${datasource}"
+          },
+          "gridPos":{
+            "x":12,
+            "y":16,
+            "w":12,
+            "h":8
+          },
+          "targets":[
+            {
+              "expr":"rate(redis_evicted_keys_total[5m])",
+              "legendFormat":"evictions"
+            }
+          ]
+        }
+
+      ]
+    }
