@@ -7,3 +7,4 @@ resources:
  - result-dashboard.yaml
  - postgres-dashboard.yaml
  - redis-dashboard.yaml
+ - voting-logs-dashboard.yaml

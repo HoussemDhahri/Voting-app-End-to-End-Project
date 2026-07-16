@@ -1,0 +1,91 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: voting-logs-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  voting-logs-dashboard.json: |
+    {
+      "title": "Voting App Logs",
+      "tags": [
+        "voting",
+        "loki"
+      ],
+      "timezone": "browser",
+      "schemaVersion": 39,
+      "version": 1,
+      "refresh": "30s",
+      "panels": [
+        {
+          "title": "All Voting Application Logs",
+          "type": "logs",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "targets": [
+            {
+              "expr": "{namespace=\"voting-prod\"}"
+            }
+          ],
+          "options": {
+            "showTime": true,
+            "wrapLogMessage": true
+          }
+        },
+        {
+          "title": "Vote Service Logs",
+          "type": "logs",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "targets": [
+            {
+              "expr": "{namespace=\"voting-prod\", pod=~\"vote.*\"}"
+            }
+          ]
+        },
+        {
+          "title": "Result Service Logs",
+          "type": "logs",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "targets": [
+            {
+              "expr": "{namespace=\"voting-prod\", pod=~\"result.*\"}"
+            }
+          ]
+        },
+        {
+          "title": "Worker Logs",
+          "type": "logs",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "targets": [
+            {
+              "expr": "{namespace=\"voting-prod\", pod=~\"worker.*\"}"
+            }
+          ]
+        },
+        {
+          "title": "Errors Count",
+          "type": "timeseries",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "targets": [
+            {
+              "expr": "sum(count_over_time({namespace=\"voting-prod\"} |= \"error\" [5m]))"
+            }
+          ]
+        }
+      ]
+    }
