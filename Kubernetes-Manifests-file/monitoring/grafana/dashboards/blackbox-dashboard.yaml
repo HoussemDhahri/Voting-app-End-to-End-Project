@@ -1,0 +1,148 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: blackbox-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+
+data:
+  blackbox-dashboard.json: |
+    {
+      "title": "Blackbox Exporter - Voting App",
+      "tags": [
+        "blackbox",
+        "voting"
+      ],
+      "timezone": "browser",
+      "schemaVersion": 39,
+      "version": 1,
+      "refresh": "30s",
+
+      "panels": [
+
+        {
+          "title": "HTTP Availability",
+          "type": "stat",
+          "gridPos": {
+            "x": 0,
+            "y": 0,
+            "w": 6,
+            "h": 4
+          },
+          "targets": [
+            {
+              "expr": "probe_success{job=\"voting-blackbox\"}",
+              "legendFormat": "{{instance}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": 0
+                  },
+                  {
+                    "color": "green",
+                    "value": 1
+                  }
+                ]
+              }
+            }
+          }
+        },
+
+
+        {
+          "title": "HTTP Response Time",
+          "type": "graph",
+          "gridPos": {
+            "x": 6,
+            "y": 0,
+            "w": 9,
+            "h": 8
+          },
+          "targets": [
+            {
+              "expr": "probe_duration_seconds{job=\"voting-blackbox\"}",
+              "legendFormat": "{{instance}}"
+            }
+          ]
+        },
+
+
+        {
+          "title": "HTTP Status Code",
+          "type": "stat",
+          "gridPos": {
+            "x": 15,
+            "y": 0,
+            "w": 5,
+            "h": 4
+          },
+          "targets": [
+            {
+              "expr": "probe_http_status_code{job=\"voting-blackbox\"}",
+              "legendFormat": "{{instance}}"
+            }
+          ]
+        },
+
+
+        {
+          "title": "DNS Lookup Time",
+          "type": "graph",
+          "gridPos": {
+            "x": 0,
+            "y": 8,
+            "w": 10,
+            "h": 7
+          },
+          "targets": [
+            {
+              "expr": "probe_dns_lookup_time_seconds{job=\"voting-blackbox\"}",
+              "legendFormat": "{{instance}}"
+            }
+          ]
+        },
+
+
+        {
+          "title": "SSL Expiry (Production)",
+          "type": "graph",
+          "gridPos": {
+            "x": 10,
+            "y": 8,
+            "w": 10,
+            "h": 7
+          },
+          "targets": [
+            {
+              "expr": "probe_ssl_earliest_cert_expiry - time()",
+              "legendFormat": "{{instance}}"
+            }
+          ]
+        },
+
+
+        {
+          "title": "Probe Success Over Time",
+          "type": "graph",
+          "gridPos": {
+            "x": 0,
+            "y": 15,
+            "w": 20,
+            "h": 8
+          },
+          "targets": [
+            {
+              "expr": "probe_success{job=\"voting-blackbox\"}",
+              "legendFormat": "{{instance}}"
+            }
+          ]
+        }
+
+      ]
+    }
