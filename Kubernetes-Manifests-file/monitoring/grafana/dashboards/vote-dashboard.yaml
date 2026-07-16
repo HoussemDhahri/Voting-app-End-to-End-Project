@@ -1,25 +1,35 @@
 apiVersion: v1
 kind: ConfigMap
-
 metadata:
   name: grafana-dashboard-vote
+  namespace: monitoring
   labels:
     grafana_dashboard: "1"
 
 data:
   vote-dashboard.json: |
     {
+      "uid": "voting-vote",
       "title": "Voting App - Vote Service",
+      "description": "Traffic, vote distribution, latency, errors and pod resource usage for the Vote service.",
       "tags": ["voting-app", "vote"],
       "timezone": "browser",
       "schemaVersion": 39,
-      "version": 1,
+      "version": 2,
       "refresh": "30s",
+      "graphTooltip": 1,
+      "style": "dark",
+      "time": { "from": "now-6h", "to": "now" },
 
-      "time": {
-        "from": "now-6h",
-        "to": "now"
-      },
+      "links": [
+        {
+          "asDropdown": true,
+          "icon": "external link",
+          "title": "Voting App Dashboards",
+          "type": "dashboards",
+          "tags": ["voting-app"]
+        }
+      ],
 
       "templating": {
         "list": [
@@ -27,189 +37,104 @@ data:
             "name": "datasource",
             "type": "datasource",
             "query": "prometheus",
-            "current": {}
+            "current": {},
+            "hide": 0
           },
-
           {
             "name": "namespace",
             "type": "query",
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource}"
-            },
+            "datasource": { "type": "prometheus", "uid": "${datasource}" },
             "definition": "label_values(up, namespace)",
             "query": "label_values(up, namespace)",
-            "refresh": 1,
+            "refresh": 2,
+            "multi": false,
+            "includeAll": false,
             "current": {}
           }
         ]
       },
 
       "panels": [
+        { "id": 100, "type": "row", "title": "Traffic & Votes", "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 }, "collapsed": false },
 
         {
           "id": 1,
           "title": "Vote Requests / sec",
           "type": "timeseries",
-
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-
-          "targets": [
-            {
-              "expr": "rate(vote_requests_total[5m])",
-              "legendFormat": "requests"
-            }
-          ],
-
-          "gridPos": {
-            "x":0,
-            "y":0,
-            "w":12,
-            "h":8
-          }
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "targets": [ { "expr": "rate(vote_requests_total[5m])", "legendFormat": "requests" } ],
+          "gridPos": { "x": 0, "y": 1, "w": 12, "h": 8 },
+          "fieldConfig": { "defaults": { "unit": "reqps", "color": { "mode": "palette-classic" }, "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 15 } } },
+          "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
         },
-
 
         {
           "id": 2,
           "title": "Votes by Option",
-          "type": "timeseries",
-
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-
-          "targets": [
-            {
-              "expr": "sum(votes_total) by(option)",
-              "legendFormat": "{{option}}"
-            }
-          ],
-
-          "gridPos": {
-            "x":12,
-            "y":0,
-            "w":12,
-            "h":8
-          }
+          "type": "barchart",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "targets": [ { "expr": "sum(votes_total) by (option)", "legendFormat": "{{option}}" } ],
+          "gridPos": { "x": 12, "y": 1, "w": 12, "h": 8 },
+          "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "palette-classic" } } },
+          "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "orientation": "horizontal" }
         },
 
+        { "id": 101, "type": "row", "title": "Errors & Latency", "gridPos": { "x": 0, "y": 9, "w": 24, "h": 1 }, "collapsed": false },
 
         {
           "id": 3,
           "title": "Vote Errors / sec",
           "type": "timeseries",
-
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-
-          "targets": [
-            {
-              "expr": "rate(vote_errors_total[5m])",
-              "legendFormat": "errors"
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "targets": [ { "expr": "rate(vote_errors_total[5m])", "legendFormat": "errors" } ],
+          "gridPos": { "x": 0, "y": 10, "w": 12, "h": 8 },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps", "color": { "mode": "fixed", "fixedColor": "red" }, "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 20 },
+              "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] }
             }
-          ],
-
-          "gridPos": {
-            "x":0,
-            "y":8,
-            "w":12,
-            "h":8
-          }
+          },
+          "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
         },
-
 
         {
           "id": 4,
           "title": "Vote Request Duration",
-
           "type": "timeseries",
-
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-
-          "targets": [
-            {
-              "expr": "rate(vote_request_duration_seconds_sum[5m]) / rate(vote_request_duration_seconds_count[5m])",
-              "legendFormat": "latency"
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "targets": [ { "expr": "rate(vote_request_duration_seconds_sum[5m]) / rate(vote_request_duration_seconds_count[5m])", "legendFormat": "latency" } ],
+          "gridPos": { "x": 12, "y": 10, "w": 12, "h": 8 },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s", "color": { "mode": "palette-classic" }, "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 15 },
+              "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "orange", "value": 0.2 }, { "color": "red", "value": 0.5 } ] }
             }
-          ],
-
-          "gridPos": {
-            "x":12,
-            "y":8,
-            "w":12,
-            "h":8
-          }
+          },
+          "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
         },
 
+        { "id": 102, "type": "row", "title": "Pod Resources", "gridPos": { "x": 0, "y": 18, "w": 24, "h": 1 }, "collapsed": false },
 
         {
           "id": 5,
           "title": "Vote Pod CPU Usage",
-
           "type": "timeseries",
-
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-
-          "targets": [
-            {
-              "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"$namespace\",pod=~\"vote-deployment.*\"}[5m])) by(pod)",
-              "legendFormat": "{{pod}}"
-            }
-          ],
-
-          "gridPos": {
-            "x":0,
-            "y":16,
-            "w":12,
-            "h":8
-          }
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "targets": [ { "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"$namespace\",pod=~\"vote-deployment.*\"}[5m])) by (pod)", "legendFormat": "{{pod}}" } ],
+          "gridPos": { "x": 0, "y": 19, "w": 12, "h": 8 },
+          "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "palette-classic" }, "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10 } } },
+          "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }, "tooltip": { "mode": "multi" } }
         },
-
 
         {
           "id": 6,
-          "title": "Vote Pod Memory",
-
+          "title": "Vote Pod Memory Usage",
           "type": "timeseries",
-
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-
-          "targets": [
-            {
-              "expr": "container_memory_working_set_bytes{namespace=\"$namespace\",pod=~\"vote-deployment.*\"}",
-              "legendFormat": "{{pod}}"
-            }
-          ],
-
-          "fieldConfig": {
-            "defaults": {
-              "unit": "bytes"
-            }
-          },
-
-          "gridPos": {
-            "x":12,
-            "y":16,
-            "w":12,
-            "h":8
-          }
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "targets": [ { "expr": "container_memory_working_set_bytes{namespace=\"$namespace\",pod=~\"vote-deployment.*\"}", "legendFormat": "{{pod}}" } ],
+          "gridPos": { "x": 12, "y": 19, "w": 12, "h": 8 },
+          "fieldConfig": { "defaults": { "unit": "bytes", "color": { "mode": "palette-classic" }, "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10 } } },
+          "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }, "tooltip": { "mode": "multi" } }
         }
-
       ]
     }

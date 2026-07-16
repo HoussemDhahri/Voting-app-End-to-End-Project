@@ -1,24 +1,35 @@
 apiVersion: v1
 kind: ConfigMap
-
 metadata:
   name: grafana-dashboard-voting-overview
+  namespace: monitoring
   labels:
     grafana_dashboard: "1"
 
 data:
   voting-app-overview.json: |
     {
+      "uid": "voting-overview",
       "title": "Voting App Overview",
-      "tags": ["voting-app"],
+      "description": "Single-pane landing dashboard: service health, traffic, votes and infrastructure for the Voting App.",
+      "tags": ["voting-app", "overview"],
       "timezone": "browser",
       "schemaVersion": 39,
-      "version": 1,
+      "version": 2,
       "refresh": "30s",
-      "time": {
-        "from": "now-6h",
-        "to": "now"
-      },
+      "graphTooltip": 1,
+      "style": "dark",
+      "time": { "from": "now-6h", "to": "now" },
+
+      "links": [
+        {
+          "asDropdown": true,
+          "icon": "external link",
+          "title": "Voting App Dashboards",
+          "type": "dashboards",
+          "tags": ["voting-app"]
+        }
+      ],
 
       "templating": {
         "list": [
@@ -26,184 +37,178 @@ data:
             "name": "datasource",
             "type": "datasource",
             "query": "prometheus",
-            "current": {}
+            "current": {},
+            "hide": 0
           },
           {
             "name": "namespace",
             "type": "query",
-            "datasource": {
-              "type": "prometheus",
-              "uid": "${datasource}"
-            },
+            "datasource": { "type": "prometheus", "uid": "${datasource}" },
             "definition": "label_values(up, namespace)",
             "query": "label_values(up, namespace)",
-            "refresh": 1,
+            "refresh": 2,
             "multi": false,
-            "includeAll": false
+            "includeAll": false,
+            "current": {}
           }
         ]
       },
 
       "panels": [
+        { "id": 200, "type": "row", "title": "Service Health", "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 }, "collapsed": false },
 
         {
           "id": 1,
-          "title": "Vote Requests / sec",
-          "type": "timeseries",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "targets": [
-            {
-              "expr": "rate(vote_requests_total[5m])",
-              "legendFormat": "vote requests"
+          "title": "PostgreSQL",
+          "type": "stat",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "targets": [ { "expr": "pg_up" } ],
+          "gridPos": { "x": 0, "y": 1, "w": 6, "h": 5 },
+          "options": { "colorMode": "background", "graphMode": "none" },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [ { "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } } } ],
+              "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 1 } ] }
             }
-          ],
-          "gridPos": {
-            "x":0,
-            "y":0,
-            "w":12,
-            "h":8
           }
         },
-
 
         {
           "id": 2,
-          "title": "Total Votes",
+          "title": "Redis",
           "type": "stat",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "targets": [
-            {
-              "expr": "sum(votes_total)"
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "targets": [ { "expr": "redis_up" } ],
+          "gridPos": { "x": 6, "y": 1, "w": 6, "h": 5 },
+          "options": { "colorMode": "background", "graphMode": "none" },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [ { "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } } } ],
+              "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 1 } ] }
             }
-          ],
-          "gridPos": {
-            "x":12,
-            "y":0,
-            "w":12,
-            "h":8
           }
         },
-
 
         {
           "id": 3,
-          "title": "Vote Errors",
-          "type": "timeseries",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "targets": [
-            {
-              "expr": "rate(vote_errors_total[5m])",
-              "legendFormat": "errors"
+          "title": "Public Endpoint",
+          "type": "stat",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "targets": [ { "expr": "probe_success{job=\"voting-blackbox\"}" } ],
+          "gridPos": { "x": 12, "y": 1, "w": 6, "h": 5 },
+          "options": { "colorMode": "background", "graphMode": "none" },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [ { "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } } } ],
+              "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 1 } ] }
             }
-          ],
-          "gridPos": {
-            "x":0,
-            "y":8,
-            "w":12,
-            "h":8
           }
         },
-
 
         {
           "id": 4,
-          "title": "Result Requests / sec",
-          "type": "timeseries",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "targets": [
-            {
-              "expr": "rate(result_requests_total[5m])",
-              "legendFormat": "requests"
-            }
-          ],
-          "gridPos": {
-            "x":12,
-            "y":8,
-            "w":12,
-            "h":8
-          }
+          "title": "Total Votes",
+          "type": "stat",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "targets": [ { "expr": "sum(votes_total)" } ],
+          "gridPos": { "x": 18, "y": 1, "w": 6, "h": 5 },
+          "options": { "colorMode": "value", "graphMode": "area" },
+          "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "fixed", "fixedColor": "blue" } } }
         },
 
+        { "id": 201, "type": "row", "title": "Traffic", "gridPos": { "x": 0, "y": 6, "w": 24, "h": 1 }, "collapsed": false },
 
         {
           "id": 5,
-          "title": "Vote Pod CPU",
+          "title": "Vote Requests / sec",
           "type": "timeseries",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "targets": [
-            {
-              "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"$namespace\",pod=~\"vote-deployment.*\"}[5m])) by (pod)",
-              "legendFormat": "{{pod}}"
-            }
-          ],
-          "gridPos": {
-            "x":0,
-            "y":16,
-            "w":12,
-            "h":8
-          }
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "targets": [ { "expr": "rate(vote_requests_total[5m])", "legendFormat": "vote requests" } ],
+          "gridPos": { "x": 0, "y": 7, "w": 12, "h": 8 },
+          "fieldConfig": { "defaults": { "unit": "reqps", "color": { "mode": "palette-classic" }, "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 15 } } },
+          "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
         },
-
 
         {
           "id": 6,
-          "title": "Result Pod CPU",
+          "title": "Result Requests / sec",
           "type": "timeseries",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "targets": [
-            {
-              "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"$namespace\",pod=~\"result-deployment.*\"}[5m])) by (pod)",
-              "legendFormat": "{{pod}}"
-            }
-          ],
-          "gridPos": {
-            "x":12,
-            "y":16,
-            "w":12,
-            "h":8
-          }
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "targets": [ { "expr": "rate(result_requests_total[5m])", "legendFormat": "requests" } ],
+          "gridPos": { "x": 12, "y": 7, "w": 12, "h": 8 },
+          "fieldConfig": { "defaults": { "unit": "reqps", "color": { "mode": "palette-classic" }, "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 15 } } },
+          "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
         },
 
+        { "id": 202, "type": "row", "title": "Votes & Errors", "gridPos": { "x": 0, "y": 15, "w": 24, "h": 1 }, "collapsed": false },
 
         {
           "id": 7,
-          "title": "Pod Restarts",
-          "type": "timeseries",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "targets": [
-            {
-              "expr": "kube_pod_container_status_restarts_total{namespace=\"$namespace\",pod=~\"(vote|result)-deployment.*\"}",
-              "legendFormat": "{{pod}}"
-            }
-          ],
-          "gridPos": {
-            "x":0,
-            "y":24,
-            "w":24,
-            "h":8
-          }
-        }
+          "title": "Votes by Option",
+          "type": "barchart",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "targets": [ { "expr": "sum(votes_total) by (option)", "legendFormat": "{{option}}" } ],
+          "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 },
+          "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "palette-classic" } } },
+          "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "orientation": "horizontal" }
+        },
 
+        {
+          "id": 8,
+          "title": "Vote Errors / sec",
+          "type": "timeseries",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "targets": [ { "expr": "rate(vote_errors_total[5m])", "legendFormat": "errors" } ],
+          "gridPos": { "x": 12, "y": 16, "w": 12, "h": 8 },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps", "color": { "mode": "fixed", "fixedColor": "red" }, "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 20 },
+              "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] }
+            }
+          },
+          "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+        },
+
+        { "id": 203, "type": "row", "title": "Infrastructure", "gridPos": { "x": 0, "y": 24, "w": 24, "h": 1 }, "collapsed": false },
+
+        {
+          "id": 9,
+          "title": "Vote Pod CPU",
+          "type": "timeseries",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "targets": [ { "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"$namespace\",pod=~\"vote-deployment.*\"}[5m])) by (pod)", "legendFormat": "{{pod}}" } ],
+          "gridPos": { "x": 0, "y": 25, "w": 12, "h": 8 },
+          "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "palette-classic" }, "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10 } } },
+          "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+        },
+
+        {
+          "id": 10,
+          "title": "Result Pod CPU",
+          "type": "timeseries",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "targets": [ { "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"$namespace\",pod=~\"result-deployment.*\"}[5m])) by (pod)", "legendFormat": "{{pod}}" } ],
+          "gridPos": { "x": 12, "y": 25, "w": 12, "h": 8 },
+          "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "palette-classic" }, "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10 } } },
+          "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+        },
+
+        { "id": 204, "type": "row", "title": "Reliability", "gridPos": { "x": 0, "y": 33, "w": 24, "h": 1 }, "collapsed": false },
+
+        {
+          "id": 11,
+          "title": "Pod Restarts (Vote + Result)",
+          "type": "timeseries",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "targets": [ { "expr": "kube_pod_container_status_restarts_total{namespace=\"$namespace\",pod=~\"(vote|result)-deployment.*\"}", "legendFormat": "{{pod}}" } ],
+          "gridPos": { "x": 0, "y": 34, "w": 24, "h": 8 },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short", "color": { "mode": "palette-classic" }, "custom": { "drawStyle": "bars", "fillOpacity": 60 },
+              "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] }
+            }
+          },
+          "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
+        }
       ]
     }

@@ -9,140 +9,200 @@ metadata:
 data:
   blackbox-dashboard.json: |
     {
+      "uid": "voting-blackbox",
       "title": "Blackbox Exporter - Voting App",
-      "tags": [
-        "blackbox",
-        "voting"
-      ],
+      "description": "External synthetic probing (HTTP availability, latency, DNS, TLS) for the Voting App public endpoints.",
+      "tags": ["voting-app", "blackbox"],
       "timezone": "browser",
       "schemaVersion": 39,
-      "version": 1,
+      "version": 2,
       "refresh": "30s",
+      "graphTooltip": 1,
+      "style": "dark",
+      "time": { "from": "now-6h", "to": "now" },
+
+      "links": [
+        {
+          "asDropdown": true,
+          "icon": "external link",
+          "title": "Voting App Dashboards",
+          "type": "dashboards",
+          "tags": ["voting-app"]
+        }
+      ],
+
+      "templating": {
+        "list": [
+          {
+            "name": "datasource",
+            "type": "datasource",
+            "query": "prometheus",
+            "current": {},
+            "hide": 0
+          }
+        ]
+      },
 
       "panels": [
+        { "id": 100, "type": "row", "title": "Availability", "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 }, "collapsed": false },
 
         {
+          "id": 1,
           "title": "HTTP Availability",
           "type": "stat",
-          "gridPos": {
-            "x": 0,
-            "y": 0,
-            "w": 6,
-            "h": 4
-          },
+          "description": "1 = probe succeeded, 0 = probe failed",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "gridPos": { "x": 0, "y": 1, "w": 6, "h": 5 },
           "targets": [
-            {
-              "expr": "probe_success{job=\"voting-blackbox\"}",
-              "legendFormat": "{{instance}}"
-            }
+            { "expr": "probe_success{job=\"voting-blackbox\"}", "legendFormat": "{{instance}}" }
           ],
+          "options": { "colorMode": "background", "graphMode": "none", "textMode": "value_and_name" },
           "fieldConfig": {
             "defaults": {
-              "thresholds": {
-                "steps": [
-                  {
-                    "color": "red",
-                    "value": 0
-                  },
-                  {
-                    "color": "green",
-                    "value": 1
-                  }
-                ]
-              }
+              "mappings": [
+                { "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } } }
+              ],
+              "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 1 } ] }
             }
           }
         },
 
-
         {
-          "title": "HTTP Response Time",
-          "type": "graph",
-          "gridPos": {
-            "x": 6,
-            "y": 0,
-            "w": 9,
-            "h": 8
-          },
-          "targets": [
-            {
-              "expr": "probe_duration_seconds{job=\"voting-blackbox\"}",
-              "legendFormat": "{{instance}}"
-            }
-          ]
-        },
-
-
-        {
+          "id": 2,
           "title": "HTTP Status Code",
           "type": "stat",
-          "gridPos": {
-            "x": 15,
-            "y": 0,
-            "w": 5,
-            "h": 4
-          },
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "gridPos": { "x": 6, "y": 1, "w": 6, "h": 5 },
           "targets": [
-            {
-              "expr": "probe_http_status_code{job=\"voting-blackbox\"}",
-              "legendFormat": "{{instance}}"
+            { "expr": "probe_http_status_code{job=\"voting-blackbox\"}", "legendFormat": "{{instance}}" }
+          ],
+          "options": { "colorMode": "value", "graphMode": "none" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "none",
+              "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 200 }, { "color": "red", "value": 400 } ] }
             }
-          ]
+          }
         },
 
+        {
+          "id": 3,
+          "title": "SSL Certificate - Days Remaining",
+          "type": "stat",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "gridPos": { "x": 12, "y": 1, "w": 6, "h": 5 },
+          "targets": [
+            { "expr": "(probe_ssl_earliest_cert_expiry{job=\"voting-blackbox\"} - time())", "legendFormat": "{{instance}}" }
+          ],
+          "options": { "colorMode": "value", "graphMode": "area" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "orange", "value": 604800 }, { "color": "green", "value": 2592000 } ] }
+            }
+          }
+        },
 
         {
+          "id": 4,
+          "title": "DNS Lookup Time (current)",
+          "type": "stat",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "gridPos": { "x": 18, "y": 1, "w": 6, "h": 5 },
+          "targets": [
+            { "expr": "probe_dns_lookup_time_seconds{job=\"voting-blackbox\"}", "legendFormat": "{{instance}}" }
+          ],
+          "options": { "colorMode": "value", "graphMode": "none" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "orange", "value": 0.2 }, { "color": "red", "value": 1 } ] }
+            }
+          }
+        },
+
+        { "id": 101, "type": "row", "title": "Latency", "gridPos": { "x": 0, "y": 6, "w": 24, "h": 1 }, "collapsed": false },
+
+        {
+          "id": 5,
+          "title": "HTTP Response Time",
+          "type": "timeseries",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "gridPos": { "x": 0, "y": 7, "w": 12, "h": 8 },
+          "targets": [
+            { "expr": "probe_duration_seconds{job=\"voting-blackbox\"}", "legendFormat": "{{instance}}" }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "color": { "mode": "palette-classic" },
+              "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 15, "gradientMode": "opacity", "spanNulls": true }
+            }
+          },
+          "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max", "last"] }, "tooltip": { "mode": "multi" } }
+        },
+
+        {
+          "id": 6,
           "title": "DNS Lookup Time",
-          "type": "graph",
-          "gridPos": {
-            "x": 0,
-            "y": 8,
-            "w": 10,
-            "h": 7
-          },
+          "type": "timeseries",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "gridPos": { "x": 12, "y": 7, "w": 12, "h": 8 },
           "targets": [
-            {
-              "expr": "probe_dns_lookup_time_seconds{job=\"voting-blackbox\"}",
-              "legendFormat": "{{instance}}"
+            { "expr": "probe_dns_lookup_time_seconds{job=\"voting-blackbox\"}", "legendFormat": "{{instance}}" }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "color": { "mode": "palette-classic" },
+              "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 15, "gradientMode": "opacity", "spanNulls": true }
             }
-          ]
+          },
+          "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max", "last"] }, "tooltip": { "mode": "multi" } }
         },
 
+        { "id": 102, "type": "row", "title": "Certificates & Reliability", "gridPos": { "x": 0, "y": 15, "w": 24, "h": 1 }, "collapsed": false },
 
         {
-          "title": "SSL Expiry (Production)",
-          "type": "graph",
-          "gridPos": {
-            "x": 10,
-            "y": 8,
-            "w": 10,
-            "h": 7
-          },
+          "id": 7,
+          "title": "SSL Expiry Countdown",
+          "type": "timeseries",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 },
           "targets": [
-            {
-              "expr": "probe_ssl_earliest_cert_expiry - time()",
-              "legendFormat": "{{instance}}"
+            { "expr": "probe_ssl_earliest_cert_expiry{job=\"voting-blackbox\"} - time()", "legendFormat": "{{instance}}" }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "color": { "mode": "palette-classic" },
+              "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10 },
+              "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "orange", "value": 604800 }, { "color": "green", "value": 2592000 } ] }
             }
-          ]
+          },
+          "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
         },
 
-
         {
+          "id": 8,
           "title": "Probe Success Over Time",
-          "type": "graph",
-          "gridPos": {
-            "x": 0,
-            "y": 15,
-            "w": 20,
-            "h": 8
-          },
+          "type": "timeseries",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "gridPos": { "x": 12, "y": 16, "w": 12, "h": 8 },
           "targets": [
-            {
-              "expr": "probe_success{job=\"voting-blackbox\"}",
-              "legendFormat": "{{instance}}"
+            { "expr": "probe_success{job=\"voting-blackbox\"}", "legendFormat": "{{instance}}" }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "none",
+              "min": 0,
+              "max": 1,
+              "color": { "mode": "palette-classic" },
+              "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 25, "stacking": { "mode": "none" } },
+              "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 1 } ] }
             }
-          ]
+          },
+          "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
         }
-
       ]
     }

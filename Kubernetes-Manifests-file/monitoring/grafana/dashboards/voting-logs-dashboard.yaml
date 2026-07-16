@@ -8,84 +8,99 @@ metadata:
 data:
   voting-logs-dashboard.json: |
     {
+      "uid": "voting-logs",
       "title": "Voting App Logs",
-      "tags": [
-        "voting",
-        "loki"
-      ],
+      "description": "Centralized Loki logs for the Voting App - vote, result and worker services.",
+      "tags": ["voting-app", "loki", "logs"],
       "timezone": "browser",
       "schemaVersion": 39,
-      "version": 1,
+      "version": 2,
       "refresh": "30s",
-      "panels": [
+      "graphTooltip": 0,
+      "style": "dark",
+      "time": { "from": "now-1h", "to": "now" },
+
+      "links": [
         {
+          "asDropdown": true,
+          "icon": "external link",
+          "title": "Voting App Dashboards",
+          "type": "dashboards",
+          "tags": ["voting-app"]
+        }
+      ],
+
+      "panels": [
+        { "id": 100, "type": "row", "title": "Live Application Logs", "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 }, "collapsed": false },
+
+        {
+          "id": 1,
           "title": "All Voting Application Logs",
           "type": "logs",
-          "datasource": {
-            "type": "loki",
-            "uid": "loki"
-          },
-          "targets": [
-            {
-              "expr": "{namespace=\"voting-prod\"}"
-            }
-          ],
+          "datasource": { "type": "loki", "uid": "loki" },
+          "gridPos": { "x": 0, "y": 1, "w": 24, "h": 10 },
+          "targets": [ { "expr": "{namespace=\"voting-prod\"}" } ],
           "options": {
             "showTime": true,
-            "wrapLogMessage": true
+            "showLabels": false,
+            "wrapLogMessage": true,
+            "prettifyLogMessage": true,
+            "enableLogDetails": true,
+            "dedupStrategy": "none",
+            "sortOrder": "Descending"
           }
         },
+
+        { "id": 101, "type": "row", "title": "Logs by Service", "gridPos": { "x": 0, "y": 11, "w": 24, "h": 1 }, "collapsed": false },
+
         {
+          "id": 2,
           "title": "Vote Service Logs",
           "type": "logs",
-          "datasource": {
-            "type": "loki",
-            "uid": "loki"
-          },
-          "targets": [
-            {
-              "expr": "{namespace=\"voting-prod\", pod=~\"vote.*\"}"
-            }
-          ]
+          "datasource": { "type": "loki", "uid": "loki" },
+          "gridPos": { "x": 0, "y": 12, "w": 8, "h": 9 },
+          "targets": [ { "expr": "{namespace=\"voting-prod\", pod=~\"vote.*\"}" } ],
+          "options": { "showTime": true, "wrapLogMessage": true, "enableLogDetails": true, "dedupStrategy": "none", "sortOrder": "Descending" }
         },
+
         {
+          "id": 3,
           "title": "Result Service Logs",
           "type": "logs",
-          "datasource": {
-            "type": "loki",
-            "uid": "loki"
-          },
-          "targets": [
-            {
-              "expr": "{namespace=\"voting-prod\", pod=~\"result.*\"}"
-            }
-          ]
+          "datasource": { "type": "loki", "uid": "loki" },
+          "gridPos": { "x": 8, "y": 12, "w": 8, "h": 9 },
+          "targets": [ { "expr": "{namespace=\"voting-prod\", pod=~\"result.*\"}" } ],
+          "options": { "showTime": true, "wrapLogMessage": true, "enableLogDetails": true, "dedupStrategy": "none", "sortOrder": "Descending" }
         },
+
         {
+          "id": 4,
           "title": "Worker Logs",
           "type": "logs",
-          "datasource": {
-            "type": "loki",
-            "uid": "loki"
-          },
-          "targets": [
-            {
-              "expr": "{namespace=\"voting-prod\", pod=~\"worker.*\"}"
-            }
-          ]
+          "datasource": { "type": "loki", "uid": "loki" },
+          "gridPos": { "x": 16, "y": 12, "w": 8, "h": 9 },
+          "targets": [ { "expr": "{namespace=\"voting-prod\", pod=~\"worker.*\"}" } ],
+          "options": { "showTime": true, "wrapLogMessage": true, "enableLogDetails": true, "dedupStrategy": "none", "sortOrder": "Descending" }
         },
+
+        { "id": 102, "type": "row", "title": "Log Analytics", "gridPos": { "x": 0, "y": 21, "w": 24, "h": 1 }, "collapsed": false },
+
         {
-          "title": "Errors Count",
+          "id": 5,
+          "title": "Errors Count Over Time",
           "type": "timeseries",
-          "datasource": {
-            "type": "loki",
-            "uid": "loki"
-          },
-          "targets": [
-            {
-              "expr": "sum(count_over_time({namespace=\"voting-prod\"} |= \"error\" [5m]))"
+          "datasource": { "type": "loki", "uid": "loki" },
+          "gridPos": { "x": 0, "y": 22, "w": 24, "h": 8 },
+          "targets": [ { "expr": "sum(count_over_time({namespace=\"voting-prod\"} |= \"error\" [5m]))", "legendFormat": "errors" } ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": { "mode": "fixed", "fixedColor": "red" },
+              "custom": { "drawStyle": "bars", "fillOpacity": 40 },
+              "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] }
             }
-          ]
+          },
+          "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } }
         }
       ]
     }
