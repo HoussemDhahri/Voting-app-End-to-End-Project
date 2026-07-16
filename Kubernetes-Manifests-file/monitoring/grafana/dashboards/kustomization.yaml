@@ -5,3 +5,4 @@ resources:
  - voting-app-overview.yaml
  - vote-dashboard.yaml
  - result-dashboard.yaml
+ - postgres-dashboard.yaml

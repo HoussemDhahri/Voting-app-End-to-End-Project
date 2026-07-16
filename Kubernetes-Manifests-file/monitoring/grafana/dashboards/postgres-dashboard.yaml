@@ -1,0 +1,238 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-postgres
+  labels:
+    grafana_dashboard: "1"
+
+data:
+  postgres-dashboard.json: |
+    {
+      "title": "Voting PostgreSQL Dashboard",
+      "tags": [
+        "voting-app",
+        "postgres"
+      ],
+      "timezone": "browser",
+      "schemaVersion": 39,
+      "version": 1,
+      "refresh": "30s",
+
+      "time": {
+        "from": "now-6h",
+        "to": "now"
+      },
+
+      "templating": {
+        "list": [
+          {
+            "name": "datasource",
+            "type": "datasource",
+            "query": "prometheus",
+            "current": {}
+          }
+        ]
+      },
+
+      "panels": [
+
+        {
+          "id": 1,
+          "title": "PostgreSQL Status",
+          "type": "stat",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "gridPos": {
+            "x":0,
+            "y":0,
+            "w":6,
+            "h":5
+          },
+          "targets": [
+            {
+              "expr": "pg_up",
+              "legendFormat": "PostgreSQL"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                {
+                  "type":"value",
+                  "options":{
+                    "0":{
+                      "text":"DOWN"
+                    },
+                    "1":{
+                      "text":"UP"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+
+
+        {
+          "id":2,
+          "title":"Database Size",
+          "type":"stat",
+          "datasource":{
+            "type":"prometheus",
+            "uid":"${datasource}"
+          },
+          "gridPos":{
+            "x":6,
+            "y":0,
+            "w":6,
+            "h":5
+          },
+          "targets":[
+            {
+              "expr":"pg_database_size_bytes{datname=\"houssem-postgres\"}",
+              "legendFormat":"{{datname}}"
+            }
+          ],
+          "fieldConfig":{
+            "defaults":{
+              "unit":"bytes"
+            }
+          }
+        },
+
+
+        {
+          "id":3,
+          "title":"Active Connections",
+          "type":"timeseries",
+          "datasource":{
+            "type":"prometheus",
+            "uid":"${datasource}"
+          },
+          "gridPos":{
+            "x":12,
+            "y":0,
+            "w":12,
+            "h":8
+          },
+          "targets":[
+            {
+              "expr":"pg_stat_database_numbackends{datname=\"houssem-postgres\"}",
+              "legendFormat":"connections"
+            }
+          ]
+        },
+
+
+        {
+          "id":4,
+          "title":"Transactions Commit",
+          "type":"timeseries",
+          "datasource":{
+            "type":"prometheus",
+            "uid":"${datasource}"
+          },
+          "gridPos":{
+            "x":0,
+            "y":8,
+            "w":12,
+            "h":8
+          },
+          "targets":[
+            {
+              "expr":"rate(pg_stat_database_xact_commit{datname=\"houssem-postgres\"}[5m])",
+              "legendFormat":"commits/sec"
+            }
+          ]
+        },
+
+
+        {
+          "id":5,
+          "title":"Rollback Rate",
+          "type":"timeseries",
+          "datasource":{
+            "type":"prometheus",
+            "uid":"${datasource}"
+          },
+          "gridPos":{
+            "x":12,
+            "y":8,
+            "w":12,
+            "h":8
+          },
+          "targets":[
+            {
+              "expr":"rate(pg_stat_database_xact_rollback{datname=\"houssem-postgres\"}[5m])",
+              "legendFormat":"rollback/sec"
+            }
+          ]
+        },
+
+
+        {
+          "id":6,
+          "title":"Cache Hit Ratio",
+          "type":"gauge",
+          "datasource":{
+            "type":"prometheus",
+            "uid":"${datasource}"
+          },
+          "gridPos":{
+            "x":0,
+            "y":16,
+            "w":8,
+            "h":8
+          },
+          "targets":[
+            {
+              "expr":
+              "100 * pg_stat_database_blks_hit{datname=\"houssem-postgres\"} / (pg_stat_database_blks_hit{datname=\"houssem-postgres\"} + pg_stat_database_blks_read{datname=\"houssem-postgres\"})"
+            }
+          ],
+          "fieldConfig":{
+            "defaults":{
+              "unit":"percent"
+            }
+          }
+        },
+
+
+        {
+          "id":7,
+          "title":"Blocks Read",
+          "type":"timeseries",
+          "datasource":{
+            "type":"prometheus",
+            "uid":"${datasource}"
+          },
+          "targets":[
+            {
+              "expr":"rate(pg_stat_database_blks_read{datname=\"houssem-postgres\"}[5m])",
+              "legendFormat":"read"
+            }
+          ]
+        },
+
+
+        {
+          "id":8,
+          "title":"Blocks Hit",
+          "type":"timeseries",
+          "datasource":{
+            "type":"prometheus",
+            "uid":"${datasource}"
+          },
+          "targets":[
+            {
+              "expr":"rate(pg_stat_database_blks_hit{datname=\"houssem-postgres\"}[5m])",
+              "legendFormat":"hit"
+            }
+          ]
+        }
+
+      ]
+    }
