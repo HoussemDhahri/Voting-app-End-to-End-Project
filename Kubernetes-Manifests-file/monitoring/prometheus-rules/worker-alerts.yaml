@@ -1,0 +1,180 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+
+metadata:
+  name: worker-alerts
+  namespace: monitoring
+
+  labels:
+    app: voting-app
+    component: worker
+    release: monitoring
+
+spec:
+
+  groups:
+
+    - name: worker.rules
+
+      rules:
+
+
+        # ==========================
+        # Worker Deployment Down
+        # ==========================
+        - alert: WorkerDeploymentDown
+
+          expr: |
+            kube_deployment_status_replicas_available{
+              namespace="voting-prod",
+              deployment="worker-deployment"
+            } < 1
+
+          for: 2m
+
+          labels:
+            severity: critical
+            component: worker
+
+          annotations:
+
+            summary: "Worker deployment is down"
+
+            description: |
+              Worker deployment has no available replicas
+              for more than 2 minutes.
+
+
+
+        # ==========================
+        # Worker Pod CrashLoopBackOff
+        # ==========================
+        - alert: WorkerPodCrashLoopBackOff
+
+          expr: |
+            kube_pod_container_status_waiting_reason{
+              namespace="voting-prod",
+              pod=~"worker-deployment-.*",
+              reason="CrashLoopBackOff"
+            } > 0
+
+          for: 2m
+
+          labels:
+            severity: critical
+            component: worker
+
+          annotations:
+
+            summary: "Worker pod is in CrashLoopBackOff"
+
+            description: |
+              Worker pod {{ $labels.pod }}
+              is restarting continuously.
+
+
+
+        # ==========================
+        # Worker High CPU
+        # ==========================
+        - alert: WorkerHighCPU
+
+          expr: |
+            sum(
+              rate(
+                container_cpu_usage_seconds_total{
+                  namespace="voting-prod",
+                  pod=~"worker-deployment-.*"
+                }[5m]
+              )
+            )
+            /
+            sum(
+              kube_pod_container_resource_limits{
+                namespace="voting-prod",
+                pod=~"worker-deployment-.*",
+                resource="cpu"
+              }
+            )
+            > 0.85
+
+          for: 5m
+
+          labels:
+            severity: warning
+            component: worker
+
+          annotations:
+
+            summary: "Worker CPU usage is high"
+
+            description: |
+              Worker application CPU usage is above 85%
+              for more than 5 minutes.
+
+
+
+        # ==========================
+        # Worker High Memory
+        # ==========================
+        - alert: WorkerHighMemory
+
+          expr: |
+            sum(
+              container_memory_working_set_bytes{
+                namespace="voting-prod",
+                pod=~"worker-deployment-.*"
+              }
+            )
+            /
+            sum(
+              kube_pod_container_resource_limits{
+                namespace="voting-prod",
+                pod=~"worker-deployment-.*",
+                resource="memory"
+              }
+            )
+            > 0.85
+
+          for: 5m
+
+          labels:
+            severity: warning
+            component: worker
+
+          annotations:
+
+            summary: "Worker memory usage is high"
+
+            description: |
+              Worker application memory usage is above 85%
+              for more than 5 minutes.
+
+
+
+        # ==========================
+        # Worker Container Restarting
+        # ==========================
+        - alert: WorkerContainerRestarting
+
+          expr: |
+            increase(
+              kube_pod_container_status_restarts_total{
+                namespace="voting-prod",
+                pod=~"worker-deployment-.*"
+              }[15m]
+            ) > 3
+
+          for: 5m
+
+          labels:
+            severity: warning
+            component: worker
+
+          annotations:
+
+            summary: "Worker container restarting frequently"
+
+            description: |
+              Worker container restarted more than 3 times
+              within 15 minutes.
