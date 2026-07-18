@@ -4,22 +4,177 @@ kind: PrometheusRule
 metadata:
   name: vote-alerts
   namespace: monitoring
+
   labels:
+    app: voting-app
+    component: vote
     release: monitoring
 
 spec:
+
   groups:
-  - name: vote.rules
 
-    rules:
+    - name: vote.rules
 
-    - alert: VoteApplicationDown
-      expr: up{job="vote-service"} == 0
-      for: 2m
+      rules:
 
-      labels:
-        severity: critical
 
-      annotations:
-        summary: "Vote application is down"
-        description: "Vote service has been unreachable for more than 2 minutes"
+        # ==========================
+        # Vote Deployment Down
+        # ==========================
+        - alert: VoteDeploymentDown
+
+          expr: |
+            kube_deployment_status_replicas_available{
+              namespace="voting-prod",
+              deployment="vote-deployment"
+            } < 1
+
+          for: 2m
+
+          labels:
+            severity: critical
+            component: vote
+
+          annotations:
+
+            summary: "Vote deployment is down"
+
+            description: |
+              Vote deployment has no available replicas
+              for more than 2 minutes.
+
+
+
+        # ==========================
+        # Vote Pod CrashLoopBackOff
+        # ==========================
+        - alert: VotePodCrashLoopBackOff
+
+          expr: |
+            kube_pod_container_status_waiting_reason{
+              namespace="voting-prod",
+              pod=~"vote-deployment-.*",
+              reason="CrashLoopBackOff"
+            } > 0
+
+          for: 2m
+
+          labels:
+            severity: critical
+            component: vote
+
+          annotations:
+
+            summary: "Vote pod is in CrashLoopBackOff"
+
+            description: |
+              Vote pod {{ $labels.pod }}
+              is restarting continuously.
+
+
+
+        # ==========================
+        # Vote High CPU
+        # ==========================
+        - alert: VoteHighCPU
+
+          expr: |
+            sum(
+              rate(
+                container_cpu_usage_seconds_total{
+                  namespace="voting-prod",
+                  pod=~"vote-deployment-.*"
+                }[5m]
+              )
+            )
+            /
+            sum(
+              kube_pod_container_resource_limits{
+                namespace="voting-prod",
+                pod=~"vote-deployment-.*",
+                resource="cpu"
+              }
+            )
+            > 0.85
+
+          for: 5m
+
+          labels:
+            severity: warning
+            component: vote
+
+          annotations:
+
+            summary: "Vote CPU usage is high"
+
+            description: |
+              Vote application CPU usage is above 85%
+              for more than 5 minutes.
+
+
+
+        # ==========================
+        # Vote High Memory
+        # ==========================
+        - alert: VoteHighMemory
+
+          expr: |
+            sum(
+              container_memory_working_set_bytes{
+                namespace="voting-prod",
+                pod=~"vote-deployment-.*"
+              }
+            )
+            /
+            sum(
+              kube_pod_container_resource_limits{
+                namespace="voting-prod",
+                pod=~"vote-deployment-.*",
+                resource="memory"
+              }
+            )
+            > 0.85
+
+          for: 5m
+
+          labels:
+            severity: warning
+            component: vote
+
+          annotations:
+
+            summary: "Vote memory usage is high"
+
+            description: |
+              Vote application memory usage is above 85%
+              for more than 5 minutes.
+
+
+
+        # ==========================
+        # Vote Container Restarts
+        # ==========================
+        - alert: VoteContainerRestarting
+
+          expr: |
+            increase(
+              kube_pod_container_status_restarts_total{
+                namespace="voting-prod",
+                pod=~"vote-deployment-.*"
+              }[15m]
+            ) > 3
+
+          for: 5m
+
+          labels:
+            severity: warning
+            component: vote
+
+          annotations:
+
+            summary: "Vote container restarting frequently"
+
+            description: |
+              Vote container restarted more than 3 times
+              within 15 minutes.
