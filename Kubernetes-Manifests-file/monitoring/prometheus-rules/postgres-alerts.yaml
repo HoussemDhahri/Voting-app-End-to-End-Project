@@ -1,0 +1,102 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+
+metadata:
+  name: postgres-alerts
+  namespace: monitoring
+
+  labels:
+    app: voting-app
+    component: postgres
+    release: monitoring
+
+spec:
+
+  groups:
+
+    - name: postgres.rules
+
+      rules:
+
+
+        # ==========================
+        # PostgreSQL Pod Down
+        # ==========================
+        - alert: PostgresPodDown
+
+          expr: |
+            kube_statefulset_status_replicas_ready{
+              namespace="voting-prod",
+              statefulset="postgres-statefulset"
+            } < 1
+
+          for: 2m
+
+          labels:
+            severity: critical
+            component: postgres
+
+          annotations:
+
+            summary: "PostgreSQL is down"
+
+            description: |
+              PostgreSQL StatefulSet has no ready replicas
+              for more than 2 minutes.
+
+
+
+        # ==========================
+        # PostgreSQL CrashLoopBackOff
+        # ==========================
+        - alert: PostgresPodCrashLoopBackOff
+
+          expr: |
+            kube_pod_container_status_waiting_reason{
+              namespace="voting-prod",
+              pod=~"postgres-statefulset-.*",
+              reason="CrashLoopBackOff"
+            } > 0
+
+          for: 2m
+
+          labels:
+            severity: critical
+            component: postgres
+
+          annotations:
+
+            summary: "PostgreSQL pod is crashing"
+
+            description: |
+              PostgreSQL pod {{ $labels.pod }}
+              is in CrashLoopBackOff.
+
+
+
+        # ==========================
+        # PostgreSQL Restarting
+        # ==========================
+        - alert: PostgresContainerRestarting
+
+          expr: |
+            increase(
+              kube_pod_container_status_restarts_total{
+                namespace="voting-prod",
+                pod=~"postgres-statefulset-.*"
+              }[15m]
+            ) > 3
+
+          for: 5m
+
+          labels:
+            severity: warning
+            component: postgres
+
+          annotations:
+
+            summary: "PostgreSQL restarting frequently"
+
+            description: |
+              PostgreSQL container restarted more than 3 times
+              within 15 minutes.

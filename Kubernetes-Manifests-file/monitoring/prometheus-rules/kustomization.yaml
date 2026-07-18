@@ -5,3 +5,4 @@ resources:
  - vote-alerts.yaml
  - result-alerts.yaml
  - worker-alerts.yaml
+ - postgres-alerts.yaml
