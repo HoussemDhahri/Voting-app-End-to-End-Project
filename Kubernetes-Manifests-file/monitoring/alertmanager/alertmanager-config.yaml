@@ -1,0 +1,47 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+
+metadata:
+  name: voting-alertmanager
+  namespace: monitoring
+
+spec:
+  route:
+    receiver: slack-notifications
+    groupBy:
+      - alertname
+      - namespace
+    groupWait: 30s
+    groupInterval: 5m
+    repeatInterval: 1h
+
+  receivers:
+    - name: slack-notifications
+      slackConfigs:
+        - apiURL:
+            name: alertmanager-slack-webhook
+            key: webhook-url
+
+          channel: "#voting-alerts"
+
+          sendResolved: true
+
+          username: "Alertmanager"
+
+          title: '[{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}'
+
+          text: |
+            *Application:* Voting App
+
+            *Alert:* {{ .CommonLabels.alertname }}
+
+            *Severity:* {{ .CommonLabels.severity }}
+
+            *Namespace:* {{ .CommonLabels.namespace }}
+
+            *Pod:* {{ .CommonLabels.pod }}
+
+            *Description:*
+            {{ range .Alerts }}
+            • {{ .Annotations.description }}
+            {{ end }}
