@@ -6,3 +6,4 @@ resources:
  - result-alerts.yaml
  - worker-alerts.yaml
  - postgres-alerts.yaml
+ - redis-alerts.yaml

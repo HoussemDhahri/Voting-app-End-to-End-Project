@@ -1,0 +1,102 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+
+metadata:
+  name: redis-alerts
+  namespace: monitoring
+
+  labels:
+    app: voting-app
+    component: redis
+    release: monitoring
+
+spec:
+
+  groups:
+
+    - name: redis.rules
+
+      rules:
+
+
+        # ==========================
+        # Redis Pod Down
+        # ==========================
+        - alert: RedisPodDown
+
+          expr: |
+            kube_statefulset_status_replicas_ready{
+              namespace="voting-prod",
+              statefulset="redis-statefulset"
+            } < 1
+
+          for: 2m
+
+          labels:
+            severity: critical
+            component: redis
+
+          annotations:
+
+            summary: "Redis is down"
+
+            description: |
+              Redis StatefulSet has no ready replicas
+              for more than 2 minutes.
+
+
+
+        # ==========================
+        # Redis CrashLoopBackOff
+        # ==========================
+        - alert: RedisPodCrashLoopBackOff
+
+          expr: |
+            kube_pod_container_status_waiting_reason{
+              namespace="voting-prod",
+              pod=~"redis-statefulset-.*",
+              reason="CrashLoopBackOff"
+            } > 0
+
+          for: 2m
+
+          labels:
+            severity: critical
+            component: redis
+
+          annotations:
+
+            summary: "Redis pod is in CrashLoopBackOff"
+
+            description: |
+              Redis pod {{ $labels.pod }}
+              is restarting continuously.
+
+
+
+        # ==========================
+        # Redis Container Restarting
+        # ==========================
+        - alert: RedisContainerRestarting
+
+          expr: |
+            increase(
+              kube_pod_container_status_restarts_total{
+                namespace="voting-prod",
+                pod=~"redis-statefulset-.*"
+              }[15m]
+            ) > 3
+
+          for: 5m
+
+          labels:
+            severity: warning
+            component: redis
+
+          annotations:
+
+            summary: "Redis container restarting frequently"
+
+            description: |
+              Redis container restarted more than 3 times
+              within 15 minutes.
