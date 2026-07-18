@@ -4,23 +4,179 @@ kind: PrometheusRule
 metadata:
   name: result-alerts
   namespace: monitoring
+
   labels:
+    app: voting-app
+    component: result
     release: monitoring
 
 spec:
 
   groups:
-  - name: result.rules
 
-    rules:
+    - name: result.rules
 
-    - alert: ResultApplicationDown
-      expr: up{job="result-service"} == 0
-      for: 2m
+      rules:
 
-      labels:
-        severity: critical
 
-      annotations:
-        summary: "Result application is down"
-        description: "Result service is not responding"
+        # ==========================
+        # Result Deployment Down
+        # ==========================
+        - alert: ResultDeploymentDown
+
+          expr: |
+            kube_deployment_status_replicas_available{
+              namespace="voting-prod",
+              deployment="result-deployment"
+            } < 1
+
+          for: 2m
+
+          labels:
+            severity: critical
+            component: result
+
+          annotations:
+
+            summary: "Result deployment is down"
+
+            description: |
+              Result deployment has no available replicas
+              for more than 2 minutes.
+
+
+
+        # ==========================
+        # Result Pod CrashLoopBackOff
+        # ==========================
+        - alert: ResultPodCrashLoopBackOff
+
+          expr: |
+            kube_pod_container_status_waiting_reason{
+              namespace="voting-prod",
+              pod=~"result-deployment-.*",
+              reason="CrashLoopBackOff"
+            } > 0
+
+          for: 2m
+
+          labels:
+            severity: critical
+            component: result
+
+          annotations:
+
+            summary: "Result pod is in CrashLoopBackOff"
+
+            description: |
+              Result pod {{ $labels.pod }}
+              is restarting continuously.
+
+
+
+        # ==========================
+        # Result High CPU
+        # ==========================
+        - alert: ResultHighCPU
+
+          expr: |
+            sum(
+              rate(
+                container_cpu_usage_seconds_total{
+                  namespace="voting-prod",
+                  pod=~"result-deployment-.*"
+                }[5m]
+              )
+            )
+            /
+            sum(
+              kube_pod_container_resource_limits{
+                namespace="voting-prod",
+                pod=~"result-deployment-.*",
+                resource="cpu"
+              }
+            )
+            > 0.85
+
+          for: 5m
+
+          labels:
+            severity: warning
+            component: result
+
+          annotations:
+
+            summary: "Result CPU usage is high"
+
+            description: |
+              Result application CPU usage is above 85%
+              for more than 5 minutes.
+
+
+
+        # ==========================
+        # Result High Memory
+        # ==========================
+        - alert: ResultHighMemory
+
+          expr: |
+            sum(
+              container_memory_working_set_bytes{
+                namespace="voting-prod",
+                pod=~"result-deployment-.*"
+              }
+            )
+            /
+            sum(
+              kube_pod_container_resource_limits{
+                namespace="voting-prod",
+                pod=~"result-deployment-.*",
+                resource="memory"
+              }
+            )
+            > 0.85
+
+          for: 5m
+
+          labels:
+
+            severity: warning
+            component: result
+
+          annotations:
+
+            summary: "Result memory usage is high"
+
+            description: |
+              Result application memory usage is above 85%
+              for more than 5 minutes.
+
+
+
+        # ==========================
+        # Result Container Restarting
+        # ==========================
+        - alert: ResultContainerRestarting
+
+          expr: |
+            increase(
+              kube_pod_container_status_restarts_total{
+                namespace="voting-prod",
+                pod=~"result-deployment-.*"
+              }[15m]
+            ) > 3
+
+          for: 5m
+
+          labels:
+
+            severity: warning
+            component: result
+
+          annotations:
+
+            summary: "Result container restarting frequently"
+
+            description: |
+              Result container restarted more than 3 times
+              within 15 minutes.

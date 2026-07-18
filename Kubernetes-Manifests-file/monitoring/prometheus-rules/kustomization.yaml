@@ -3,3 +3,4 @@ kind: Kustomization
 
 resources:
  - vote-alerts.yaml
+ - result-alerts.yaml
