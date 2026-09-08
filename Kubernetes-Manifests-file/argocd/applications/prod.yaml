@@ -15,6 +15,25 @@ spec:
     server: https://kubernetes.default.svc
     namespace: voting-prod
 
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      name: result-deployment
+      jsonPointers:
+        - /spec/replicas
+
+    - group: apps
+      kind: Deployment
+      name: vote-deployment
+      jsonPointers:
+        - /spec/replicas
+
+    - group: apps
+      kind: Deployment
+      name: worker-deployment
+      jsonPointers:
+        - /spec/replicas
+
   syncPolicy:
     syncOptions:
       - CreateNamespace=true

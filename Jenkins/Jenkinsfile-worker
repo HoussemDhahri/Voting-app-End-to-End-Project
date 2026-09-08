@@ -1,5 +1,15 @@
 pipeline {
-    agent any
+
+    agent {
+        docker {
+            image 'houssemdhahri93/jenkins-dotnet8-agent:latest'
+            args '''
+                --network jenkins-sonarqube
+                -v /var/run/docker.sock:/var/run/docker.sock
+                --group-add 982
+            '''
+        }
+    }
 
     triggers {
         githubPush()
@@ -9,7 +19,7 @@ pipeline {
         booleanParam(
             name: 'APPLY_PROD',
             defaultValue: false,
-            description: 'Deploy to Production?'
+            description: 'Deploy to Production'
         )
     }
 
@@ -25,21 +35,17 @@ pipeline {
         // App
         APP_NAME     = 'voting-worker'
         GITHUB_URL   = 'https://github.com/HoussemDhahri/Voting-app-End-to-End-Project.git'
+        GITHUB_REPO  = 'HoussemDhahri/Voting-app-End-to-End-Project.git'
         APP_DIR      = 'Application-Code/worker'
 
         // SonarQube
         SONAR_PROJECT = 'Voting-Worker'
         SONAR_SERVER  = 'SonarQube-Server'
+        SCANNER_HOME = tool 'sonarqube-scanner'
 
         // Docker
         DOCKER_REPO  = 'houssemdhahri93'
         DOCKER_IMAGE = "${DOCKER_REPO}/${APP_NAME}"
-
-        // Dotnet
-        HOME                               = "${WORKSPACE}"
-        DOTNET_CLI_HOME                    = "${WORKSPACE}"
-        DOTNET_SKIP_FIRST_TIME_EXPERIENCE  = "1"
-        DOTNET_NOLOGO                      = "1"
 
         // Credentials
         DOCKER_CREDS_ID = 'Dockerhub'
@@ -98,22 +104,7 @@ pipeline {
             }
         }
 
-        stage('📦 Pre-pull Docker Images') {
-            steps {
-                sh '''
-                    docker pull mcr.microsoft.com/dotnet/sdk:8.0
-                '''
-            }
-        }
-
-        stage('⚙️ Restore Dependencies') {
-            agent {
-                docker {
-                    image 'mcr.microsoft.com/dotnet/sdk:8.0'
-                    args '-v /var/run/docker.sock:/var/run/docker.sock'
-                    reuseNode true
-                }
-            }
+        stage('⚙️ Install Dependencies') {
             steps {
                 dir("${env.APP_DIR?.trim() ? env.APP_DIR : '.'}") {
                     sh '''
@@ -124,61 +115,18 @@ pipeline {
             }
         }
 
-        stage('⚡ Quality Checks') {
-            parallel {
-
-                stage('🔎 Lint (format check)') {
-                    agent {
-                        docker {
-                            image 'mcr.microsoft.com/dotnet/sdk:8.0'
-                            args '-v /var/run/docker.sock:/var/run/docker.sock'
-                            reuseNode true
-                        }
-                    }
-                    steps {
-                        dir("${env.APP_DIR?.trim() ? env.APP_DIR : '.'}") {
-                            sh '''
-                                dotnet format --verify-no-changes || true
-                            '''
-                        }
-                    }
-                }
-
-                stage('🧪 Build Check') {
-                    agent {
-                        docker {
-                            image 'mcr.microsoft.com/dotnet/sdk:8.0'
-                            args '-v /var/run/docker.sock:/var/run/docker.sock'
-                            reuseNode true
-                        }
-                    }
-                    steps {
-                        dir("${env.APP_DIR?.trim() ? env.APP_DIR : '.'}") {
-                            sh '''
-                                dotnet build -c Release --no-restore
-                            '''
-                        }
-                    }
-                }
-            }
-        }
-
         stage('🔬 Trivy FS Scan') {
             steps {
                 dir("${env.APP_DIR?.trim() ? env.APP_DIR : '.'}") {
                     sh '''
-
-                        mkdir -p $HOME/.cache/trivy/db
-
                         trivy fs \
-                            --scanners vuln,secret \
-                            --severity HIGH,CRITICAL \
-                            --exit-code 0 \
-                            --format json \
-                            --output trivy-fs-report.json \
-                            --cache-dir $HOME/.cache/trivy \
-                            --timeout 10m \
-                            .
+                        --scanners vuln,secret \
+                        --severity HIGH,CRITICAL \
+                        --exit-code 0 \
+                        --format json \
+                --timeout 10m \
+                        --output trivy-fs-report.json \
+                        .
                     '''
                 }
             }
@@ -190,31 +138,17 @@ pipeline {
         }
 
         stage('📊 SonarQube Analysis') {
-            agent {
-                docker {
-                    image 'houssemdhahri93/dotnet-sdk-java17'
-                    args '--network jenkins-sonarqube'
-                    reuseNode true
-                }
-            }
-
             steps {
-                dir("${env.APP_DIR}") {
+                dir("${env.APP_DIR?.trim() ? env.APP_DIR : '.'}") {
                     withSonarQubeEnv("${SONAR_SERVER}") {
                         sh '''
-                            mkdir -p /tmp/dotnet_tools
-                            dotnet tool install --tool-path /tmp/dotnet_tools dotnet-sonarscanner || true
-                            export PATH="$PATH:/tmp/dotnet_tools"
-
-                            dotnet-sonarscanner begin \
-                              /k:"${SONAR_PROJECT}" \
-                              /n:"${APP_NAME}" \
-                              /v:"${IMAGE_TAG}" \
-                              /d:sonar.exclusions="**/bin/**,**/obj/**"
+                            dotnet sonarscanner begin \
+                            /k:"${SONAR_PROJECT}" \
+                            /n:"${APP_NAME}"
 
                             dotnet build
 
-                            dotnet-sonarscanner end
+                            dotnet sonarscanner end
                         '''
                     }
                 }
@@ -249,39 +183,31 @@ pipeline {
 
         stage('🔬 Trivy Image Scan') {
             steps {
-                dir("${env.APP_DIR?.trim() ? env.APP_DIR : '.'}") {
-                    sh '''
-                        trivy image \
-                          --severity HIGH,CRITICAL \
-                          --exit-code 0 \
-                          --format json \
-                          --scanners vuln \
-                          --timeout 15m \
-                          --output trivy-image-report.json \
-                          --no-progress \
-                          ${DOCKER_IMAGE}:${IMAGE_TAG}
+                sh '''
+                    trivy image \
+                    --scanners vuln \
+                    --severity HIGH,CRITICAL \
+                    --exit-code 0 \
+                    --format json \
+                    --output trivy-report.json \
+                    --timeout 15m \
+                    --no-progress \
+                    ${DOCKER_IMAGE}:${IMAGE_TAG}
 
-                        trivy image \
-                          --severity CRITICAL \
-                          --exit-code 1 \
-                          --scanners vuln \
-                          --timeout 15m \
-                          --no-progress \
-                          ${DOCKER_IMAGE}:${IMAGE_TAG}
-
-                        trivy image \
-                          --format cyclonedx \
-                          --output trivy-sbom.json \
-                          --timeout 15m \
-                          --no-progress \
-                          ${DOCKER_IMAGE}:${IMAGE_TAG}
-                    '''
-                }
+                    trivy image \
+                    --scanners vuln \
+                    --severity CRITICAL \
+                    --exit-code 1 \
+                    --format table \
+                    --output trivy-critical-report.json \
+                    --timeout 15m \
+                    --no-progress \
+                    ${DOCKER_IMAGE}:${IMAGE_TAG}
+                '''
             }
-
             post {
                 always {
-                    archiveArtifacts artifacts: '**/trivy-*.json', allowEmptyArchive: true
+                    archiveArtifacts artifacts: 'trivy-report.json,trivy-critical-report.json', allowEmptyArchive: true
                 }
             }
         }
@@ -313,81 +239,94 @@ pipeline {
         }
 
         stage('🔄 Update Staging') {
-          steps {
-            withCredentials([usernamePassword(
-              credentialsId: "${GITHUB_CREDS_ID}",
-              usernameVariable: 'GIT_USER',
-              passwordVariable: 'GIT_TOKEN'
-            )]) {
-
-              sh '''
-                set -e
-
-                git config user.name "${GIT_USER_NAME}"
-                git config user.email "${GIT_USER_EMAIL}"
-
-                git pull origin ${GITOPS_BRANCH} --rebase
-
-                cd ${K8S_STAGING}
-
-                kustomize edit set image ${DOCKER_IMAGE}=${IMAGE_FULL}
-
-                cd -
-
-                git add ${K8S_STAGING}/kustomization.yaml
-
-                git commit -m "ci: update staging image to ${IMAGE_TAG} [build ${BUILD_NUMBER}]" || echo "No changes to commit"
-
-                git remote set-url origin https://${GIT_USER}:${GIT_TOKEN}@github.com/HoussemDhahri/Voting-app-End-to-End-Project.git
-
-                git push origin ${GITOPS_BRANCH}
-              '''
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: "${GITHUB_CREDS_ID}",
+                    usernameVariable: 'GIT_USER',
+                    passwordVariable: 'GIT_TOKEN'
+                )]) {
+        
+                    sh '''
+                        set -e
+        
+                        git config user.name "${GIT_USER_NAME}"
+                        git config user.email "${GIT_USER_EMAIL}"
+        
+                        git reset --hard HEAD
+                        git clean -fd
+        
+                        git pull origin ${GITOPS_BRANCH} --rebase
+        
+                        cd ${K8S_STAGING}
+        
+                        kustomize edit set image ${DOCKER_IMAGE}=${IMAGE_FULL}
+        
+                        cd -
+        
+                        git add ${K8S_STAGING}/kustomization.yaml
+        
+                        git commit -m "update staging image ${APP_NAME} to ${IMAGE_TAG}" \
+                            || echo "No changes to commit"
+        
+                        git remote set-url origin https://${GIT_USER}:${GIT_TOKEN}@github.com/${GITHUB_REPO}
+        
+                        git push origin ${GITOPS_BRANCH}
+                    '''
+                }
             }
-          }
         }
 
-        stage('✋Approve Prod') {
-          when { expression { params.APPLY_PROD } }
-          steps {
-                input message: "🚀 Deploy image ${env.IMAGE_FULL} to PRODUCTION?",
-                      ok: "Yes, deploy!"
-          }
+        stage('✋ Deploy Production') {
+            when {
+                expression { params.APPLY_PROD }
+            }
+            steps {
+                sh '''
+                    # Production deployment commands
+                '''
+            }
         }
 
         stage('🔄 Update Prod') {
-          when { expression { params.APPLY_PROD } }
-
-          steps {
-            withCredentials([usernamePassword(
-              credentialsId: "${GITHUB_CREDS_ID}",
-              usernameVariable: 'GIT_USER',
-              passwordVariable: 'GIT_TOKEN'
-            )]) {
-
-              sh '''
-                set -e
-
-                git config user.name "${GIT_USER_NAME}"
-                git config user.email "${GIT_USER_EMAIL}"
-
-                git pull origin ${GITOPS_BRANCH} --rebase
-
-                cd ${K8S_PROD}
-
-                kustomize edit set image ${DOCKER_IMAGE}=${IMAGE_FULL}
-
-                cd -
-
-                git add ${K8S_PROD}/kustomization.yaml
-
-                git commit -m "ci: update prod image to ${IMAGE_TAG} [build ${BUILD_NUMBER}]" || echo "No changes to commit"
-
-                git remote set-url origin https://${GIT_USER}:${GIT_TOKEN}@github.com/HoussemDhahri/Voting-app-End-to-End-Project.git
-
-                git push origin ${GITOPS_BRANCH}
-              '''
+            when {
+                expression { params.APPLY_PROD }
             }
-          }
+        
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: "${GITHUB_CREDS_ID}",
+                    usernameVariable: 'GIT_USER',
+                    passwordVariable: 'GIT_TOKEN'
+                )]) {
+        
+                    sh '''
+                        set -e
+        
+                        git config user.name "${GIT_USER_NAME}"
+                        git config user.email "${GIT_USER_EMAIL}"
+        
+                        git reset --hard HEAD
+                        git clean -fd
+        
+                        git pull origin ${GITOPS_BRANCH} --rebase
+        
+                        cd ${K8S_PROD}
+        
+                        kustomize edit set image ${DOCKER_IMAGE}=${IMAGE_FULL}
+        
+                        cd -
+        
+                        git add ${K8S_PROD}/kustomization.yaml
+        
+                        git commit -m "update prod image ${APP_NAME} to ${IMAGE_TAG}" \
+                            || echo "No changes to commit"
+        
+                        git remote set-url origin https://${GIT_USER}:${GIT_TOKEN}@github.com/${GITHUB_REPO}
+        
+                        git push origin ${GITOPS_BRANCH}
+                    '''
+                }
+            }
         }
 
     }

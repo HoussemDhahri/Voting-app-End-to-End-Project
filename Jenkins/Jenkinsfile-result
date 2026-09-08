@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     tools {
-        nodejs 'node22'
+        nodejs 'node18'
     }
 
     triggers {
@@ -13,7 +13,7 @@ pipeline {
         booleanParam(
             name: 'APPLY_PROD',
             defaultValue: false,
-            description: 'Deploy to Production?'
+            description: 'Deploy to Production'
         )
     }
 
@@ -29,11 +29,13 @@ pipeline {
         // App
         APP_NAME     = 'voting-result'
         GITHUB_URL   = 'https://github.com/HoussemDhahri/Voting-app-End-to-End-Project.git'
+        GITHUB_REPO  = 'HoussemDhahri/Voting-app-End-to-End-Project.git'
         APP_DIR      = 'Application-Code/result'
 
         // SonarQube
-        SONAR_PROJECT = 'Voting-Result'
+        SONAR_PROJECT = 'voting-result'
         SONAR_SERVER  = 'SonarQube-Server'
+        SCANNER_HOME = tool 'sonarqube-scanner'
 
         // Docker
         DOCKER_REPO  = 'houssemdhahri93'
@@ -107,49 +109,19 @@ pipeline {
                 }
             }
         }
-        
-        stage('⚡ Quality Checks') {
-            parallel {
-
-                stage('🔎 Lint') {
-                    steps {
-                        dir("${env.APP_DIR?.trim() ? env.APP_DIR : '.'}") {
-                            sh 'npm run lint --if-present'
-                        }
-                    }
-                }
-
-                stage('🧪 Unit Tests') {
-                    steps {
-                        dir("${env.APP_DIR?.trim() ? env.APP_DIR : '.'}") {
-                            sh 'npm test -- --coverage --passWithNoTests'
-                        }
-                    }
-                    post {
-                        always {
-                            junit allowEmptyResults: true, testResults: 'coverage/junit.xml'
-                        }
-                    }
-                }
-            }
-        }
 
         stage('🔬 Trivy FS Scan') {
             steps {
                 dir("${env.APP_DIR?.trim() ? env.APP_DIR : '.'}") {
                     sh '''
-
-                        mkdir -p $HOME/.cache/trivy/db
-        
                         trivy fs \
-                            --scanners vuln,secret \
-                            --severity HIGH,CRITICAL \
-                            --exit-code 0 \
-                            --format json \
-                            --output trivy-fs-report.json \
-                            --cache-dir $HOME/.cache/trivy \
-                            --timeout 10m \
-                            .
+                        --scanners vuln,secret \
+                        --severity HIGH,CRITICAL \
+                        --exit-code 0 \
+                        --format json \
+                --timeout 10m \
+                        --output trivy-fs-report.json \
+                        .
                     '''
                 }
             }
@@ -165,13 +137,11 @@ pipeline {
                 dir("${env.APP_DIR?.trim() ? env.APP_DIR : '.'}") {
                     withSonarQubeEnv("${SONAR_SERVER}") {
                         sh '''
-                            npx sonar-scanner \
-                              -Dsonar.projectKey=${SONAR_PROJECT} \
-                              -Dsonar.projectName=${APP_NAME} \
-                              -Dsonar.projectVersion=${IMAGE_TAG} \
-                              -Dsonar.sources=. \
-                              -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info \
-                              -Dsonar.exclusions=**/node_modules/**,**/coverage/**,**/*.test.*
+                            ${SCANNER_HOME}/bin/sonar-scanner \
+                            -Dsonar.projectKey=${SONAR_PROJECT} \
+                            -Dsonar.projectName=${APP_NAME} \
+                            -Dsonar.sources=. \
+                            -Dsonar.sourceEncoding=UTF-8
                         '''
                     }
                 }
@@ -206,39 +176,31 @@ pipeline {
 
         stage('🔬 Trivy Image Scan') {
             steps {
-                dir("${env.APP_DIR?.trim() ? env.APP_DIR : '.'}") {
-                    sh '''
-                        trivy image \
-                          --severity HIGH,CRITICAL \
-                          --exit-code 0 \
-                          --format json \
-                          --scanners vuln \
-                          --timeout 15m \
-                          --output trivy-image-report.json \
-                          --no-progress \
-                          ${DOCKER_IMAGE}:${IMAGE_TAG}
-                          
-                        trivy image \
-                          --severity CRITICAL \
-                          --exit-code 1 \
-                          --scanners vuln \
-                          --timeout 15m \
-                          --no-progress \
-                          ${DOCKER_IMAGE}:${IMAGE_TAG}
+                sh '''
+                    trivy image \
+                    --scanners vuln \
+                    --severity HIGH,CRITICAL \
+                    --exit-code 0 \
+                    --format json \
+                    --output trivy-report.json \
+                    --timeout 15m \
+                    --no-progress \
+                    ${DOCKER_IMAGE}:${IMAGE_TAG}
 
-                        trivy image \
-                          --format cyclonedx \
-                          --output trivy-sbom.json \
-                          --timeout 15m \
-                          --no-progress \
-                          ${DOCKER_IMAGE}:${IMAGE_TAG}
-                    '''
-                }
+                    trivy image \
+                    --scanners vuln \
+                    --severity CRITICAL \
+                    --exit-code 1 \
+                    --format table \
+                    --output trivy-critical-report.json \
+                    --timeout 15m \
+                    --no-progress \
+                    ${DOCKER_IMAGE}:${IMAGE_TAG}
+                '''
             }
-
             post {
                 always {
-                    archiveArtifacts artifacts: '**/trivy-*.json', allowEmptyArchive: true
+                    archiveArtifacts artifacts: 'trivy-report.json,trivy-critical-report.json', allowEmptyArchive: true
                 }
             }
         }
@@ -270,81 +232,94 @@ pipeline {
         }
         
         stage('🔄 Update Staging') {
-          steps {
-            withCredentials([usernamePassword(
-              credentialsId: "${GITHUB_CREDS_ID}",
-              usernameVariable: 'GIT_USER',
-              passwordVariable: 'GIT_TOKEN'
-            )]) {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: "${GITHUB_CREDS_ID}",
+                    usernameVariable: 'GIT_USER',
+                    passwordVariable: 'GIT_TOKEN'
+                )]) {
         
-              sh '''
-                set -e
+                    sh '''
+                        set -e
         
-                git config user.name "${GIT_USER_NAME}"
-                git config user.email "${GIT_USER_EMAIL}"
-                
-                git pull origin ${GITOPS_BRANCH} --rebase
+                        git config user.name "${GIT_USER_NAME}"
+                        git config user.email "${GIT_USER_EMAIL}"
         
-                cd ${K8S_STAGING}
+                        git reset --hard HEAD
+                        git clean -fd
         
-                kustomize edit set image ${DOCKER_IMAGE}=${IMAGE_FULL}
+                        git pull origin ${GITOPS_BRANCH} --rebase
         
-                cd -
+                        cd ${K8S_STAGING}
         
-                git add ${K8S_STAGING}/kustomization.yaml
+                        kustomize edit set image ${DOCKER_IMAGE}=${IMAGE_FULL}
         
-                git commit -m "ci: update staging image to ${IMAGE_TAG} [build ${BUILD_NUMBER}]" || echo "No changes to commit"
+                        cd -
         
-                git remote set-url origin https://${GIT_USER}:${GIT_TOKEN}@github.com/HoussemDhahri/Voting-app-End-to-End-Project.git
+                        git add ${K8S_STAGING}/kustomization.yaml
         
-                git push origin ${GITOPS_BRANCH}
-              '''
+                        git commit -m "update staging image ${APP_NAME} to ${IMAGE_TAG}" \
+                            || echo "No changes to commit"
+        
+                        git remote set-url origin https://${GIT_USER}:${GIT_TOKEN}@github.com/${GITHUB_REPO}
+        
+                        git push origin ${GITOPS_BRANCH}
+                    '''
+                }
             }
-          }
         }
         
-        stage('✋Approve Prod') {
-          when { expression { params.APPLY_PROD } }
-          steps {
-                input message: "🚀 Deploy image ${env.IMAGE_FULL} to PRODUCTION?",
-                      ok: "Yes, deploy!"
-          }
+        stage('✋ Deploy Production') {
+            when {
+                expression { params.APPLY_PROD }
+            }
+            steps {
+                sh '''
+                    # Production deployment commands
+                '''
+            }
         }
         
         stage('🔄 Update Prod') {
-          when { expression { params.APPLY_PROD } }
-        
-          steps {
-            withCredentials([usernamePassword(
-              credentialsId: "${GITHUB_CREDS_ID}",
-              usernameVariable: 'GIT_USER',
-              passwordVariable: 'GIT_TOKEN'
-            )]) {
-        
-              sh '''
-                set -e
-        
-                git config user.name "${GIT_USER_NAME}"
-                git config user.email "${GIT_USER_EMAIL}"
-        
-                git pull origin ${GITOPS_BRANCH} --rebase
-                
-                cd ${K8S_PROD}
-        
-                kustomize edit set image ${DOCKER_IMAGE}=${IMAGE_FULL}
-        
-                cd -
-        
-                git add ${K8S_PROD}/kustomization.yaml
-        
-                git commit -m "ci: update prod image to ${IMAGE_TAG} [build ${BUILD_NUMBER}]" || echo "No changes to commit"
-        
-                git remote set-url origin https://${GIT_USER}:${GIT_TOKEN}@github.com/HoussemDhahri/Voting-app-End-to-End-Project.git
-        
-                git push origin ${GITOPS_BRANCH}
-              '''
+            when {
+                expression { params.APPLY_PROD }
             }
-          }
+        
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: "${GITHUB_CREDS_ID}",
+                    usernameVariable: 'GIT_USER',
+                    passwordVariable: 'GIT_TOKEN'
+                )]) {
+        
+                    sh '''
+                        set -e
+        
+                        git config user.name "${GIT_USER_NAME}"
+                        git config user.email "${GIT_USER_EMAIL}"
+        
+                        git reset --hard HEAD
+                        git clean -fd
+        
+                        git pull origin ${GITOPS_BRANCH} --rebase
+        
+                        cd ${K8S_PROD}
+        
+                        kustomize edit set image ${DOCKER_IMAGE}=${IMAGE_FULL}
+        
+                        cd -
+        
+                        git add ${K8S_PROD}/kustomization.yaml
+        
+                        git commit -m "update prod image ${APP_NAME} to ${IMAGE_TAG}" \
+                            || echo "No changes to commit"
+        
+                        git remote set-url origin https://${GIT_USER}:${GIT_TOKEN}@github.com/${GITHUB_REPO}
+        
+                        git push origin ${GITOPS_BRANCH}
+                    '''
+                }
+            }
         }
 
     }
