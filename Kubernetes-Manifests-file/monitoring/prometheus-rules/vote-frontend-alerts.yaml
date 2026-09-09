@@ -1,0 +1,149 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: vote-frontend-alerts
+  namespace: monitoring
+  labels:
+    release: monitoring
+
+spec:
+  groups:
+    - name: vote-alerts
+      rules:
+
+        - alert: VoteFrontendDown
+          expr: |
+            probe_success{
+              job="vote-frontend-blackbox",
+              instance=~"http://vote-service\\.voting-(staging|prod)\\.svc:5000/.*"
+            } == 0
+          for: 2m
+          labels:
+            severity: critical
+            component: vote
+          annotations:
+            summary: "Vote frontend is down"
+            description: "The Vote frontend is not reachable for more than 2 minutes."
+
+        - alert: VoteFrontendHighErrorRate
+          expr: |
+            probe_http_status_code{
+              job="vote-frontend-blackbox",
+              instance=~"http://vote-service\\.voting-(staging|prod)\\.svc:5000/.*"
+            } >= 500
+          for: 5m
+          labels:
+            severity: critical
+            component: vote
+          annotations:
+            summary: "Vote frontend returning server errors"
+            description: "The Vote frontend is returning HTTP 5xx responses for more than 5 minutes."
+
+        - alert: VoteFrontendClientErrors
+          expr: |
+            probe_http_status_code{
+              job="vote-frontend-blackbox",
+              instance=~"http://vote-service\\.voting-(staging|prod)\\.svc:5000/.*"
+            } >= 400
+            and
+            probe_http_status_code{
+              job="vote-frontend-blackbox",
+              instance=~"http://vote-service\\.voting-(staging|prod)\\.svc:5000/.*"
+            } < 500
+          for: 5m
+          labels:
+            severity: warning
+            component: vote
+          annotations:
+            summary: "Vote frontend returning client errors"
+            description: "The Vote frontend is returning HTTP 4xx responses for more than 5 minutes."
+
+        - alert: VoteFrontendSlow
+          expr: |
+            probe_duration_seconds{
+              job="vote-frontend-blackbox",
+              instance=~"http://vote-service\\.voting-(staging|prod)\\.svc:5000/.*"
+            } > 2
+          for: 5m
+          labels:
+            severity: warning
+            component: vote
+          annotations:
+            summary: "Vote frontend is slow"
+            description: "The Vote frontend response time is above 2 seconds for more than 5 minutes."
+
+        - alert: VoteFrontendHighCPU
+          expr: |
+            (
+              sum by (namespace, pod) (
+                rate(
+                  container_cpu_usage_seconds_total{
+                    namespace=~"voting-(staging|prod)",
+                    pod=~"vote-deployment-.*",
+                    container!="",
+                    container!="POD"
+                  }[5m]
+                )
+              )
+              /
+              sum by (namespace, pod) (
+                kube_pod_container_resource_requests{
+                  namespace=~"voting-(staging|prod)",
+                  pod=~"vote-deployment-.*",
+                  resource="cpu",
+                  unit="core"
+                }
+              )
+            ) > 0.80
+          for: 10m
+          labels:
+            severity: warning
+            component: vote
+          annotations:
+            summary: "Vote frontend CPU usage is high"
+            description: "Vote frontend CPU usage is above 80% of its requested CPU for more than 10 minutes."
+
+        - alert: VoteFrontendHighMemory
+          expr: |
+            (
+              sum by (namespace, pod) (
+                container_memory_working_set_bytes{
+                  namespace=~"voting-(staging|prod)",
+                  pod=~"vote-deployment-.*",
+                  container!="",
+                  container!="POD"
+                }
+              )
+              /
+              sum by (namespace, pod) (
+                kube_pod_container_resource_requests{
+                  namespace=~"voting-(staging|prod)",
+                  pod=~"vote-deployment-.*",
+                  resource="memory",
+                  unit="byte"
+                }
+              )
+            ) > 0.80
+          for: 10m
+          labels:
+            severity: warning
+            component: vote
+          annotations:
+            summary: "Vote frontend memory usage is high"
+            description: "Vote frontend memory usage is above 80% of its requested memory for more than 10 minutes."
+
+        - alert: VoteFrontendPodRestarting
+          expr: |
+            increase(
+              kube_pod_container_status_restarts_total{
+                namespace=~"voting-(staging|prod)",
+                pod=~"vote-deployment-.*"
+              }[10m]
+            ) > 3
+          for: 1m
+          labels:
+            severity: warning
+            component: vote
+          annotations:
+            summary: "Vote frontend pod is restarting"
+            description: "The Vote frontend pod has restarted more than 3 times in the last 10 minutes."
