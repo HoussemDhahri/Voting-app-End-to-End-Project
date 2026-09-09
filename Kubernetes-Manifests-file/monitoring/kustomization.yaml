@@ -6,3 +6,4 @@ resources:
   - redis-exporter
   - postgres-exporter
   - prometheus-rules
+  - alertmanager

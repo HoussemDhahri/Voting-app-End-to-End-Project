@@ -1,0 +1,43 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: voting-slack-alerts
+  namespace: monitoring
+  labels:
+    release: monitoring
+
+spec:
+  route:
+    receiver: voting-slack
+    matchers:
+      - name: component
+        matchType: "=~"
+        value: "vote|result|worker|redis|postgresql"
+    groupBy:
+      - alertname
+      - component
+      - namespace
+    groupWait: 30s
+    groupInterval: 5m
+    repeatInterval: 4h
+
+  receivers:
+    - name: voting-slack
+      slackConfigs:
+        - apiURL:
+            name: slack-webhook
+            key: slack-webhook-url
+          sendResolved: true
+
+          title: '{{ if eq .Status "firing" }}🚨 Voting Alert{{ else }}✅ Voting Alert Resolved{{ end }}'
+
+          text: |
+            *Alert:* {{ .CommonLabels.alertname }}
+            *Component:* {{ .CommonLabels.component }}
+            *Namespace:* {{ .CommonLabels.namespace }}
+            *Severity:* {{ .CommonLabels.severity }}
+
+            *Description:*
+            {{ .CommonAnnotations.description }}
+
+            *Status:* {{ .Status | toUpper }}
