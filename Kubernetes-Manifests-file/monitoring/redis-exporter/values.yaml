@@ -1,0 +1,52 @@
+replicaCount: 1
+
+image:
+  repository: oliver006/redis_exporter
+  pullPolicy: IfNotPresent
+  tag: "v1.90.0"
+
+service:
+  type: ClusterIP
+  port: 9121
+  portName: redis-exporter
+
+resources:
+  requests:
+    cpu: 25m
+    memory: 64Mi
+  limits:
+    cpu: 100m
+    memory: 128Mi
+
+livenessProbe:
+  initialDelaySeconds: 10
+  periodSeconds: 15
+  timeoutSeconds: 5
+  failureThreshold: 5
+
+readinessProbe:
+  initialDelaySeconds: 10
+  periodSeconds: 15
+  timeoutSeconds: 5
+  failureThreshold: 5
+
+serviceMonitor:
+  enabled: true
+  multipleTarget: true
+
+  telemetryPath: /scrape
+
+  namespace: monitoring
+
+  interval: 30s
+  timeout: 10s
+
+  labels:
+    release: monitoring
+
+  targets:
+    - name: redis-staging
+      url: redis://redis-service.voting-staging.svc.cluster.local:6379
+
+    - name: redis-prod
+      url: redis://redis-service.voting-prod.svc.cluster.local:6379
