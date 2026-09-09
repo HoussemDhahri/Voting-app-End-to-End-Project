@@ -5,3 +5,4 @@ resources:
   - vote-frontend-alerts.yaml
   - result-frontend-alerts.yaml
   - worker-alerts.yaml
+  - redis-alerts.yaml

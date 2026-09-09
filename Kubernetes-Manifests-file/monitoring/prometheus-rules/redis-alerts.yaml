@@ -1,0 +1,118 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: redis-alerts
+  namespace: monitoring
+  labels:
+    release: monitoring
+
+spec:
+  groups:
+    - name: redis-alerts
+      rules:
+
+        - alert: RedisDown
+          expr: |
+            redis_up{
+              namespace="monitoring",
+              target=~"redis-(staging|prod)"
+            } == 0
+          for: 2m
+          labels:
+            severity: critical
+            component: redis
+          annotations:
+            summary: "Redis is down"
+            description: "Redis has been unreachable for more than 2 minutes."
+
+        - alert: RedisHighMemoryUsage
+          expr: |
+            (
+              sum by (namespace, pod) (
+                container_memory_working_set_bytes{
+                  namespace=~"voting-(staging|prod)",
+                  pod=~"redis-statefulset-.*",
+                  container!="",
+                  container!="POD"
+                }
+              )
+              /
+              sum by (namespace, pod) (
+                kube_pod_container_resource_requests{
+                  namespace=~"voting-(staging|prod)",
+                  pod=~"redis-statefulset-.*",
+                  resource="memory",
+                  unit="byte"
+                }
+              )
+            ) > 0.80
+          for: 10m
+          labels:
+            severity: warning
+            component: redis
+          annotations:
+            summary: "Redis memory usage is high"
+            description: "Redis memory usage is above 80% of its requested memory for more than 10 minutes."
+
+        - alert: RedisRejectedConnections
+          expr: |
+            increase(
+              redis_rejected_connections_total{
+                namespace="monitoring",
+                target=~"redis-(staging|prod)"
+              }[5m]
+            ) > 0
+          for: 2m
+          labels:
+            severity: warning
+            component: redis
+          annotations:
+            summary: "Redis is rejecting connections"
+            description: "Redis has rejected client connections during the last 5 minutes."
+
+        - alert: RedisHighCPU
+          expr: |
+            (
+              sum by (namespace, pod) (
+                rate(
+                  container_cpu_usage_seconds_total{
+                    namespace=~"voting-(staging|prod)",
+                    pod=~"redis-statefulset-.*",
+                    container!="",
+                    container!="POD"
+                  }[5m]
+                )
+              )
+              /
+              sum by (namespace, pod) (
+                kube_pod_container_resource_requests{
+                  namespace=~"voting-(staging|prod)",
+                  pod=~"redis-statefulset-.*",
+                  resource="cpu",
+                  unit="core"
+                }
+              )
+            ) > 0.80
+          for: 10m
+          labels:
+            severity: warning
+            component: redis
+          annotations:
+            summary: "Redis CPU usage is high"
+            description: "Redis CPU usage is above 80% of its requested CPU for more than 10 minutes."
+
+        - alert: RedisPodRestarting
+          expr: |
+            increase(
+              kube_pod_container_status_restarts_total{
+                namespace=~"voting-(staging|prod)",
+                pod=~"redis-statefulset-.*"
+              }[10m]
+            ) > 3
+          for: 1m
+          labels:
+            severity: warning
+            component: redis
+          annotations:
+            summary: "Redis pod is restarting"
+            description: "The Redis pod has restarted more than 3 times in the last 10 minutes."
