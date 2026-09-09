@@ -4,3 +4,4 @@ kind: Kustomization
 resources:
   - blackbox-exporter
   - redis-exporter
+  - postgres-exporter

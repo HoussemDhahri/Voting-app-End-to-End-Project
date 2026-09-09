@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+
+metadata:
+  name: postgres-exporter-targets
+  namespace: monitoring
+
+data:
+  POSTGRES_STAGING_HOST: "postgres-service.voting-staging.svc.cluster.local"
+  POSTGRES_STAGING_PORT: "5432"
+  POSTGRES_STAGING_DATABASE: "houssem-postgres"
+  POSTGRES_STAGING_USER: "houssem"
+
+  POSTGRES_PROD_HOST: "postgres-service.voting-prod.svc.cluster.local"
+  POSTGRES_PROD_PORT: "5432"
+  POSTGRES_PROD_DATABASE: "houssem-postgres"
+  POSTGRES_PROD_USER: "houssem"

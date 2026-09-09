@@ -1,0 +1,64 @@
+replicaCount: 1
+
+image:
+  registry: quay.io
+  repository: prometheuscommunity/postgres-exporter
+  tag: "v0.18.1"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 9187
+  targetPort: 9187
+  name: postgres-exporter
+
+resources:
+  requests:
+    cpu: 25m
+    memory: 64Mi
+  limits:
+    cpu: 100m
+    memory: 128Mi
+
+livenessProbe:
+  initialDelaySeconds: 10
+  periodSeconds: 15
+  timeoutSeconds: 5
+  failureThreshold: 5
+
+readinessProbe:
+  initialDelaySeconds: 10
+  periodSeconds: 15
+  timeoutSeconds: 5
+  failureThreshold: 5
+
+serviceMonitor:
+  enabled: true
+
+  namespace: monitoring
+
+  interval: 30s
+  timeout: 10s
+  telemetryPath: /metrics
+
+  labels:
+    release: monitoring
+
+  multipleTarget:
+    enabled: true
+
+    targets:
+      - name: postgres-staging
+        endpoint: postgres-service.voting-staging.svc.cluster.local
+        port: 5432
+        databaseName: houssem-postgres
+
+      - name: postgres-prod
+        endpoint: postgres-service.voting-prod.svc.cluster.local
+        port: 5432
+        databaseName: houssem-postgres
+
+config:
+  existingSecret:
+    enabled: true
+    name: postgres-exporter-config
