@@ -5,3 +5,4 @@ resources:
   - blackbox-exporter
   - redis-exporter
   - postgres-exporter
+  - prometheus-rules
