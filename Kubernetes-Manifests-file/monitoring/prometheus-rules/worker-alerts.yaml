@@ -1,0 +1,102 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: worker-alerts
+  namespace: monitoring
+  labels:
+    release: monitoring
+
+spec:
+  groups:
+    - name: worker-alerts
+      rules:
+
+        - alert: WorkerDown
+          expr: |
+            kube_deployment_status_replicas_available{
+              namespace=~"voting-(staging|prod)",
+              deployment=~"worker-deployment"
+            } == 0
+          for: 2m
+          labels:
+            severity: critical
+            component: worker
+          annotations:
+            summary: "Worker is down"
+            description: "The Worker deployment has no available replicas for more than 2 minutes."
+
+        - alert: WorkerHighCPU
+          expr: |
+            (
+              sum by (namespace, pod) (
+                rate(
+                  container_cpu_usage_seconds_total{
+                    namespace=~"voting-(staging|prod)",
+                    pod=~"worker-deployment-.*",
+                    container!="",
+                    container!="POD"
+                  }[5m]
+                )
+              )
+              /
+              sum by (namespace, pod) (
+                kube_pod_container_resource_requests{
+                  namespace=~"voting-(staging|prod)",
+                  pod=~"worker-deployment-.*",
+                  resource="cpu",
+                  unit="core"
+                }
+              )
+            ) > 0.80
+          for: 10m
+          labels:
+            severity: warning
+            component: worker
+          annotations:
+            summary: "Worker CPU usage is high"
+            description: "Worker CPU usage is above 80% of its requested CPU for more than 10 minutes."
+
+        - alert: WorkerHighMemory
+          expr: |
+            (
+              sum by (namespace, pod) (
+                container_memory_working_set_bytes{
+                  namespace=~"voting-(staging|prod)",
+                  pod=~"worker-deployment-.*",
+                  container!="",
+                  container!="POD"
+                }
+              )
+              /
+              sum by (namespace, pod) (
+                kube_pod_container_resource_requests{
+                  namespace=~"voting-(staging|prod)",
+                  pod=~"worker-deployment-.*",
+                  resource="memory",
+                  unit="byte"
+                }
+              )
+            ) > 0.80
+          for: 10m
+          labels:
+            severity: warning
+            component: worker
+          annotations:
+            summary: "Worker memory usage is high"
+            description: "Worker memory usage is above 80% of its requested memory for more than 10 minutes."
+
+        - alert: WorkerPodRestarting
+          expr: |
+            increase(
+              kube_pod_container_status_restarts_total{
+                namespace=~"voting-(staging|prod)",
+                pod=~"worker-deployment-.*"
+              }[10m]
+            ) > 3
+          for: 1m
+          labels:
+            severity: warning
+            component: worker
+          annotations:
+            summary: "Worker pod is restarting"
+            description: "The Worker pod has restarted more than 3 times in the last 10 minutes."
