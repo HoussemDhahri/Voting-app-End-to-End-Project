@@ -1,0 +1,25 @@
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: vote-frontend
+  namespace: monitoring
+  labels:
+    release: monitoring
+
+spec:
+  jobName: vote-frontend-blackbox
+
+  interval: 30s
+  scrapeTimeout: 10s
+
+  module: http_2xx
+
+  prober:
+    url: blackbox-exporter-prometheus-blackbox-exporter.monitoring.svc:9115
+    scheme: http
+
+  targets:
+    staticConfig:
+      static:
+        - http://vote-service.voting-staging.svc:5000/
+        - http://vote-service.voting-prod.svc:5000/

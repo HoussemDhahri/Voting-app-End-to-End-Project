@@ -1,0 +1,64 @@
+replicaCount: 1
+
+image:
+  repository: prometheus/blackbox-exporter
+  pullPolicy: IfNotPresent
+  tag: "v0.28.0"
+
+service:
+  type: ClusterIP
+  port: 9115
+  portName: http
+
+resources:
+  requests:
+    cpu: 25m
+    memory: 64Mi
+  limits:
+    cpu: 100m
+    memory: 128Mi
+
+config:
+  modules:
+    http_2xx:
+      prober: http
+      timeout: 5s
+      http:
+        method: GET
+        preferred_ip_protocol: ip4
+
+    tcp_connect:
+      prober: tcp
+      timeout: 5s
+
+    dns:
+      prober: dns
+      timeout: 5s
+      dns:
+        query_name: kubernetes.default.svc.cluster.local
+        query_type: A
+        preferred_ip_protocol: ip4
+
+    icmp:
+      prober: icmp
+      timeout: 5s
+
+serviceMonitor:
+  enabled: true
+  namespace: monitoring
+  interval: 30s
+  scrapeTimeout: 10s
+  labels:
+    release: monitoring
+
+livenessProbe:
+  initialDelaySeconds: 10
+  periodSeconds: 15
+  timeoutSeconds: 5
+  failureThreshold: 5
+
+readinessProbe:
+  initialDelaySeconds: 10
+  periodSeconds: 15
+  timeoutSeconds: 5
+  failureThreshold: 5
