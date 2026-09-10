@@ -1,0 +1,33 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+
+metadata:
+  name: monitoring-blackbox-exporter
+  namespace: argocd
+
+spec:
+  project: default
+
+  sources:
+
+    - repoURL: https://prometheus-community.github.io/helm-charts
+      chart: prometheus-blackbox-exporter
+      targetRevision: 11.18.0
+      helm:
+        releaseName: blackbox-exporter
+        valueFiles:
+          - $values/Kubernetes-Manifests-file/monitoring/blackbox-exporter/values.yaml
+
+    - repoURL: https://github.com/HoussemDhahri/Voting-app-End-to-End-Project.git
+      targetRevision: main
+      ref: values
+      path: Kubernetes-Manifests-file/monitoring/blackbox-exporter/probes
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
