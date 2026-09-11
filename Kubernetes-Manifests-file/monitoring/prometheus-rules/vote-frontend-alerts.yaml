@@ -135,6 +135,7 @@ spec:
           labels:
             severity: warning
             component: vote
+            namespace: monitoring
           annotations:
             summary: "Vote frontend CPU usage is high"
             description: "Vote frontend CPU usage is above 80% of its requested CPU for more than 10 minutes."
@@ -170,6 +171,7 @@ spec:
           labels:
             severity: warning
             component: vote
+            namespace: monitoring
           annotations:
             summary: "Vote frontend memory usage is high"
             description: "Vote frontend memory usage is above 80% of its requested memory for more than 10 minutes."
@@ -195,6 +197,7 @@ spec:
           labels:
             severity: warning
             component: vote
+            namespace: monitoring
           annotations:
             summary: "Vote frontend pod is restarting"
             description: "The Vote frontend pod has restarted more than 3 times in the last 10 minutes."
