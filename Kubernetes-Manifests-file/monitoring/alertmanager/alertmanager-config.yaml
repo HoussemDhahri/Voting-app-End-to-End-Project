@@ -13,11 +13,12 @@ spec:
       - name: component
         matchType: "=~"
         value: "vote|result|worker|redis|postgresql"
+
     groupBy:
       - alertname
       - component
-      - namespace
       - target_namespace
+
     groupWait: 30s
     groupInterval: 5m
     repeatInterval: 4h
@@ -28,6 +29,7 @@ spec:
         - apiURL:
             name: slack-webhook
             key: slack-webhook-url
+
           sendResolved: true
 
           title: '{{ if eq .Status "firing" }}🚨 Voting Alert{{ else }}✅ Voting Alert Resolved{{ end }}'

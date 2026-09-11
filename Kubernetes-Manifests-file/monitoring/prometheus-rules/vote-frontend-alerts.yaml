@@ -16,12 +16,12 @@ spec:
             label_replace(
               probe_success{
                 job="vote-frontend-blackbox",
-                instance=~"http://vote-service\\.voting-(staging|prod)\\.svc:5000/.*"
+                instance=~"http://vote-service\\.voting-(staging|prod)\\.svc:5000/"
               },
               "target_namespace",
               "$1",
               "instance",
-              "http://vote-service\\.(voting-(?:staging|prod))\\.svc:5000/.*"
+              "http://vote-service\\.(voting-(?:staging|prod))\\.svc:5000/"
             ) == 0
           for: 2m
           labels:
@@ -31,12 +31,18 @@ spec:
             summary: "Vote frontend is down"
             description: "The Vote frontend is not reachable for more than 2 minutes."
 
-        - alert: VoteFrontendHighErrorRate
+        - alert: VoteFrontendServerErrors
           expr: |
-            probe_http_status_code{
-              job="vote-frontend-blackbox",
-              instance=~"http://vote-service\\.voting-(staging|prod)\\.svc:5000/.*"
-            } >= 500
+            label_replace(
+              probe_http_status_code{
+                job="vote-frontend-blackbox",
+                instance=~"http://vote-service\\.voting-(staging|prod)\\.svc:5000/"
+              },
+              "target_namespace",
+              "$1",
+              "instance",
+              "http://vote-service\\.(voting-(?:staging|prod))\\.svc:5000/"
+            ) >= 500
           for: 5m
           labels:
             severity: critical
@@ -47,15 +53,27 @@ spec:
 
         - alert: VoteFrontendClientErrors
           expr: |
-            probe_http_status_code{
-              job="vote-frontend-blackbox",
-              instance=~"http://vote-service\\.voting-(staging|prod)\\.svc:5000/.*"
-            } >= 400
+            label_replace(
+              probe_http_status_code{
+                job="vote-frontend-blackbox",
+                instance=~"http://vote-service\\.voting-(staging|prod)\\.svc:5000/"
+              },
+              "target_namespace",
+              "$1",
+              "instance",
+              "http://vote-service\\.(voting-(?:staging|prod))\\.svc:5000/"
+            ) >= 400
             and
-            probe_http_status_code{
-              job="vote-frontend-blackbox",
-              instance=~"http://vote-service\\.voting-(staging|prod)\\.svc:5000/.*"
-            } < 500
+            label_replace(
+              probe_http_status_code{
+                job="vote-frontend-blackbox",
+                instance=~"http://vote-service\\.voting-(staging|prod)\\.svc:5000/"
+              },
+              "target_namespace",
+              "$1",
+              "instance",
+              "http://vote-service\\.(voting-(?:staging|prod))\\.svc:5000/"
+            ) < 500
           for: 5m
           labels:
             severity: warning
@@ -66,10 +84,16 @@ spec:
 
         - alert: VoteFrontendSlow
           expr: |
-            probe_duration_seconds{
-              job="vote-frontend-blackbox",
-              instance=~"http://vote-service\\.voting-(staging|prod)\\.svc:5000/.*"
-            } > 2
+            label_replace(
+              probe_duration_seconds{
+                job="vote-frontend-blackbox",
+                instance=~"http://vote-service\\.voting-(staging|prod)\\.svc:5000/"
+              },
+              "target_namespace",
+              "$1",
+              "instance",
+              "http://vote-service\\.(voting-(?:staging|prod))\\.svc:5000/"
+            ) > 2
           for: 5m
           labels:
             severity: warning
@@ -81,37 +105,31 @@ spec:
         - alert: VoteFrontendHighCPU
           expr: |
             label_replace(
-              label_replace(
-                (
-                  sum by (namespace, pod) (
-                    rate(
-                      container_cpu_usage_seconds_total{
-                        namespace=~"voting-(staging|prod)",
-                        pod=~"vote-deployment-.*",
-                        container!="",
-                        container!="POD"
-                      }[5m]
-                    )
-                  )
-                  /
-                  sum by (namespace, pod) (
-                    kube_pod_container_resource_requests{
+              (
+                sum by (namespace, pod) (
+                  rate(
+                    container_cpu_usage_seconds_total{
                       namespace=~"voting-(staging|prod)",
                       pod=~"vote-deployment-.*",
-                      resource="cpu",
-                      unit="core"
-                    }
+                      container="vote-container"
+                    }[5m]
                   )
-                ),
-                "target_namespace",
-                "$1",
-                "namespace",
-                "(voting-(?:staging|prod))"
+                )
+                /
+                sum by (namespace, pod) (
+                  kube_pod_container_resource_requests{
+                    namespace=~"voting-(staging|prod)",
+                    pod=~"vote-deployment-.*",
+                    container="vote-container",
+                    resource="cpu",
+                    unit="core"
+                  }
+                )
               ),
+              "target_namespace",
+              "$1",
               "namespace",
-              "monitoring",
-              "namespace",
-              ".*"
+              "(voting-(?:staging|prod))"
             ) > 0.80
           for: 10m
           labels:
@@ -124,35 +142,29 @@ spec:
         - alert: VoteFrontendHighMemory
           expr: |
             label_replace(
-              label_replace(
-                (
-                  sum by (namespace, pod) (
-                    container_memory_working_set_bytes{
-                      namespace=~"voting-(staging|prod)",
-                      pod=~"vote-deployment-.*",
-                      container!="",
-                      container!="POD"
-                    }
-                  )
-                  /
-                  sum by (namespace, pod) (
-                    kube_pod_container_resource_requests{
-                      namespace=~"voting-(staging|prod)",
-                      pod=~"vote-deployment-.*",
-                      resource="memory",
-                      unit="byte"
-                    }
-                  )
-                ),
-                "target_namespace",
-                "$1",
-                "namespace",
-                "(voting-(?:staging|prod))"
+              (
+                sum by (namespace, pod) (
+                  container_memory_working_set_bytes{
+                    namespace=~"voting-(staging|prod)",
+                    pod=~"vote-deployment-.*",
+                    container="vote-container"
+                  }
+                )
+                /
+                sum by (namespace, pod) (
+                  kube_pod_container_resource_requests{
+                    namespace=~"voting-(staging|prod)",
+                    pod=~"vote-deployment-.*",
+                    container="vote-container",
+                    resource="memory",
+                    unit="byte"
+                  }
+                )
               ),
+              "target_namespace",
+              "$1",
               "namespace",
-              "monitoring",
-              "namespace",
-              ".*"
+              "(voting-(?:staging|prod))"
             ) > 0.80
           for: 10m
           labels:
@@ -165,22 +177,19 @@ spec:
         - alert: VoteFrontendPodRestarting
           expr: |
             label_replace(
-              label_replace(
+              sum by (namespace, pod) (
                 increase(
                   kube_pod_container_status_restarts_total{
                     namespace=~"voting-(staging|prod)",
-                    pod=~"vote-deployment-.*"
+                    pod=~"vote-deployment-.*",
+                    container="vote-container"
                   }[10m]
-                ),
-                "target_namespace",
-                "$1",
-                "namespace",
-                "(voting-(?:staging|prod))"
+                )
               ),
+              "target_namespace",
+              "$1",
               "namespace",
-              "monitoring",
-              "namespace",
-              ".*"
+              "(voting-(?:staging|prod))"
             ) > 3
           for: 1m
           labels:
