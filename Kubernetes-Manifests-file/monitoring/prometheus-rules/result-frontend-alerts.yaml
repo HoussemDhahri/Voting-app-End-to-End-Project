@@ -13,10 +13,16 @@ spec:
 
         - alert: ResultFrontendDown
           expr: |
-            probe_success{
-              job="result-frontend-blackbox",
-              instance=~"http://result-service\\.voting-(staging|prod)\\.svc:4000/.*"
-            } == 0
+            label_replace(
+              probe_success{
+                job="result-frontend-blackbox",
+                instance=~"http://result-service\\.voting-(staging|prod)\\.svc:4000/"
+              },
+              "target_namespace",
+              "$1",
+              "instance",
+              "http://result-service\\.(voting-(?:staging|prod))\\.svc:4000/"
+            ) == 0
           for: 2m
           labels:
             severity: critical
@@ -25,12 +31,18 @@ spec:
             summary: "Result frontend is down"
             description: "The Result frontend is not reachable for more than 2 minutes."
 
-        - alert: ResultFrontendHighErrorRate
+        - alert: ResultFrontendServerErrors
           expr: |
-            probe_http_status_code{
-              job="result-frontend-blackbox",
-              instance=~"http://result-service\\.voting-(staging|prod)\\.svc:4000/.*"
-            } >= 500
+            label_replace(
+              probe_http_status_code{
+                job="result-frontend-blackbox",
+                instance=~"http://result-service\\.voting-(staging|prod)\\.svc:4000/"
+              },
+              "target_namespace",
+              "$1",
+              "instance",
+              "http://result-service\\.(voting-(?:staging|prod))\\.svc:4000/"
+            ) >= 500
           for: 5m
           labels:
             severity: critical
@@ -41,15 +53,27 @@ spec:
 
         - alert: ResultFrontendClientErrors
           expr: |
-            probe_http_status_code{
-              job="result-frontend-blackbox",
-              instance=~"http://result-service\\.voting-(staging|prod)\\.svc:4000/.*"
-            } >= 400
+            label_replace(
+              probe_http_status_code{
+                job="result-frontend-blackbox",
+                instance=~"http://result-service\\.voting-(staging|prod)\\.svc:4000/"
+              },
+              "target_namespace",
+              "$1",
+              "instance",
+              "http://result-service\\.(voting-(?:staging|prod))\\.svc:4000/"
+            ) >= 400
             and
-            probe_http_status_code{
-              job="result-frontend-blackbox",
-              instance=~"http://result-service\\.voting-(staging|prod)\\.svc:4000/.*"
-            } < 500
+            label_replace(
+              probe_http_status_code{
+                job="result-frontend-blackbox",
+                instance=~"http://result-service\\.voting-(staging|prod)\\.svc:4000/"
+              },
+              "target_namespace",
+              "$1",
+              "instance",
+              "http://result-service\\.(voting-(?:staging|prod))\\.svc:4000/"
+            ) < 500
           for: 5m
           labels:
             severity: warning
@@ -60,10 +84,16 @@ spec:
 
         - alert: ResultFrontendSlow
           expr: |
-            probe_duration_seconds{
-              job="result-frontend-blackbox",
-              instance=~"http://result-service\\.voting-(staging|prod)\\.svc:4000/.*"
-            } > 2
+            label_replace(
+              probe_duration_seconds{
+                job="result-frontend-blackbox",
+                instance=~"http://result-service\\.voting-(staging|prod)\\.svc:4000/"
+              },
+              "target_namespace",
+              "$1",
+              "instance",
+              "http://result-service\\.(voting-(?:staging|prod))\\.svc:4000/"
+            ) > 2
           for: 5m
           labels:
             severity: warning
@@ -74,76 +104,100 @@ spec:
 
         - alert: ResultFrontendHighCPU
           expr: |
-            (
-              sum by (namespace, pod) (
-                rate(
-                  container_cpu_usage_seconds_total{
+            label_replace(
+              (
+                sum by (namespace, pod) (
+                  rate(
+                    container_cpu_usage_seconds_total{
+                      namespace=~"voting-(staging|prod)",
+                      pod=~"result-deployment-.*",
+                      container="result-container"
+                    }[5m]
+                  )
+                )
+                /
+                sum by (namespace, pod) (
+                  kube_pod_container_resource_requests{
                     namespace=~"voting-(staging|prod)",
                     pod=~"result-deployment-.*",
-                    container!="",
-                    container!="POD"
-                  }[5m]
+                    container="result-container",
+                    resource="cpu",
+                    unit="core"
+                  }
                 )
-              )
-              /
-              sum by (namespace, pod) (
-                kube_pod_container_resource_requests{
-                  namespace=~"voting-(staging|prod)",
-                  pod=~"result-deployment-.*",
-                  resource="cpu",
-                  unit="core"
-                }
-              )
+              ),
+              "target_namespace",
+              "$1",
+              "namespace",
+              "(voting-(?:staging|prod))"
             ) > 0.80
           for: 10m
           labels:
             severity: warning
             component: result
+            namespace: monitoring
           annotations:
             summary: "Result frontend CPU usage is high"
             description: "Result frontend CPU usage is above 80% of its requested CPU for more than 10 minutes."
 
         - alert: ResultFrontendHighMemory
           expr: |
-            (
-              sum by (namespace, pod) (
-                container_memory_working_set_bytes{
-                  namespace=~"voting-(staging|prod)",
-                  pod=~"result-deployment-.*",
-                  container!="",
-                  container!="POD"
-                }
-              )
-              /
-              sum by (namespace, pod) (
-                kube_pod_container_resource_requests{
-                  namespace=~"voting-(staging|prod)",
-                  pod=~"result-deployment-.*",
-                  resource="memory",
-                  unit="byte"
-                }
-              )
+            label_replace(
+              (
+                sum by (namespace, pod) (
+                  container_memory_working_set_bytes{
+                    namespace=~"voting-(staging|prod)",
+                    pod=~"result-deployment-.*",
+                    container="result-container"
+                  }
+                )
+                /
+                sum by (namespace, pod) (
+                  kube_pod_container_resource_requests{
+                    namespace=~"voting-(staging|prod)",
+                    pod=~"result-deployment-.*",
+                    container="result-container",
+                    resource="memory",
+                    unit="byte"
+                  }
+                )
+              ),
+              "target_namespace",
+              "$1",
+              "namespace",
+              "(voting-(?:staging|prod))"
             ) > 0.80
           for: 10m
           labels:
             severity: warning
             component: result
+            namespace: monitoring
           annotations:
             summary: "Result frontend memory usage is high"
             description: "Result frontend memory usage is above 80% of its requested memory for more than 10 minutes."
 
         - alert: ResultFrontendPodRestarting
           expr: |
-            increase(
-              kube_pod_container_status_restarts_total{
-                namespace=~"voting-(staging|prod)",
-                pod=~"result-deployment-.*"
-              }[10m]
+            label_replace(
+              sum by (namespace, pod) (
+                increase(
+                  kube_pod_container_status_restarts_total{
+                    namespace=~"voting-(staging|prod)",
+                    pod=~"result-deployment-.*",
+                    container="result-container"
+                  }[10m]
+                )
+              ),
+              "target_namespace",
+              "$1",
+              "namespace",
+              "(voting-(?:staging|prod))"
             ) > 3
           for: 1m
           labels:
             severity: warning
             component: result
+            namespace: monitoring
           annotations:
             summary: "Result frontend pod is restarting"
             description: "The Result frontend pod has restarted more than 3 times in the last 10 minutes."
