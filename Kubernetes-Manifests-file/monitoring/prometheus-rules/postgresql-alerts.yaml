@@ -13,12 +13,19 @@ spec:
 
         - alert: PostgreSQLDown
           expr: |
-            pg_up{
-              namespace="monitoring",
-              target=~"postgres-(staging|prod)"
-            } == 0
+            label_replace(
+              pg_up{
+                namespace="monitoring",
+                target=~"postgres-(staging|prod)"
+              } == 0,
+              "target_namespace",
+              "voting-$1",
+              "target",
+              "postgres-(staging|prod)"
+            )
           for: 2m
           labels:
+            namespace: monitoring
             severity: critical
             component: postgresql
           annotations:
@@ -27,25 +34,32 @@ spec:
 
         - alert: PostgreSQLHighConnections
           expr: |
-            (
-              sum by (namespace, target) (
-                pg_stat_database_numbackends{
-                  namespace="monitoring",
-                  target=~"postgres-(staging|prod)",
-                  datname!~"template0|template1"
-                }
-              )
-              /
-              on (namespace, target)
-              max by (namespace, target) (
-                pg_settings_max_connections{
-                  namespace="monitoring",
-                  target=~"postgres-(staging|prod)"
-                }
-              )
-            ) > 0.80
+            label_replace(
+              (
+                sum by (namespace, target) (
+                  pg_stat_database_numbackends{
+                    namespace="monitoring",
+                    target=~"postgres-(staging|prod)",
+                    datname!~"template0|template1"
+                  }
+                )
+                /
+                on (namespace, target)
+                max by (namespace, target) (
+                  pg_settings_max_connections{
+                    namespace="monitoring",
+                    target=~"postgres-(staging|prod)"
+                  }
+                )
+              ) > 0.80,
+              "target_namespace",
+              "voting-$1",
+              "target",
+              "postgres-(staging|prod)"
+            )
           for: 10m
           labels:
+            namespace: monitoring
             severity: warning
             component: postgresql
           annotations:
@@ -54,29 +68,36 @@ spec:
 
         - alert: PostgreSQLHighCPU
           expr: |
-            (
-              sum by (namespace, pod) (
-                rate(
-                  container_cpu_usage_seconds_total{
+            label_replace(
+              (
+                sum by (namespace, pod) (
+                  rate(
+                    container_cpu_usage_seconds_total{
+                      namespace=~"voting-(staging|prod)",
+                      pod=~"postgres-.*",
+                      container!="",
+                      container!="POD"
+                    }[5m]
+                  )
+                )
+                /
+                sum by (namespace, pod) (
+                  kube_pod_container_resource_requests{
                     namespace=~"voting-(staging|prod)",
                     pod=~"postgres-.*",
-                    container!="",
-                    container!="POD"
-                  }[5m]
+                    resource="cpu",
+                    unit="core"
+                  }
                 )
-              )
-              /
-              sum by (namespace, pod) (
-                kube_pod_container_resource_requests{
-                  namespace=~"voting-(staging|prod)",
-                  pod=~"postgres-.*",
-                  resource="cpu",
-                  unit="core"
-                }
-              )
-            ) > 0.80
+              ) > 0.80,
+              "target_namespace",
+              "$1",
+              "namespace",
+              "(.*)"
+            )
           for: 10m
           labels:
+            namespace: monitoring
             severity: warning
             component: postgresql
           annotations:
@@ -85,27 +106,34 @@ spec:
 
         - alert: PostgreSQLHighMemory
           expr: |
-            (
-              sum by (namespace, pod) (
-                container_memory_working_set_bytes{
-                  namespace=~"voting-(staging|prod)",
-                  pod=~"postgres-.*",
-                  container!="",
-                  container!="POD"
-                }
-              )
-              /
-              sum by (namespace, pod) (
-                kube_pod_container_resource_requests{
-                  namespace=~"voting-(staging|prod)",
-                  pod=~"postgres-.*",
-                  resource="memory",
-                  unit="byte"
-                }
-              )
-            ) > 0.80
+            label_replace(
+              (
+                sum by (namespace, pod) (
+                  container_memory_working_set_bytes{
+                    namespace=~"voting-(staging|prod)",
+                    pod=~"postgres-.*",
+                    container!="",
+                    container!="POD"
+                  }
+                )
+                /
+                sum by (namespace, pod) (
+                  kube_pod_container_resource_requests{
+                    namespace=~"voting-(staging|prod)",
+                    pod=~"postgres-.*",
+                    resource="memory",
+                    unit="byte"
+                  }
+                )
+              ) > 0.80,
+              "target_namespace",
+              "$1",
+              "namespace",
+              "(.*)"
+            )
           for: 10m
           labels:
+            namespace: monitoring
             severity: warning
             component: postgresql
           annotations:
@@ -114,14 +142,21 @@ spec:
 
         - alert: PostgreSQLPodRestarting
           expr: |
-            increase(
-              kube_pod_container_status_restarts_total{
-                namespace=~"voting-(staging|prod)",
-                pod=~"postgres-.*"
-              }[10m]
-            ) > 3
+            label_replace(
+              increase(
+                kube_pod_container_status_restarts_total{
+                  namespace=~"voting-(staging|prod)",
+                  pod=~"postgres-.*"
+                }[10m]
+              ) > 3,
+              "target_namespace",
+              "$1",
+              "namespace",
+              "(.*)"
+            )
           for: 1m
           labels:
+            namespace: monitoring
             severity: warning
             component: postgresql
           annotations:

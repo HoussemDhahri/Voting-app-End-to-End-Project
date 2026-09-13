@@ -32,42 +32,6 @@ spec:
             summary: "Redis is down"
             description: "Redis has been unreachable for more than 2 minutes."
 
-        - alert: RedisHighMemoryUsage
-          expr: |
-            label_replace(
-              (
-                sum by (namespace, pod) (
-                  container_memory_working_set_bytes{
-                    namespace=~"voting-(staging|prod)",
-                    pod=~"redis-statefulset-.*",
-                    container="redis-container"
-                  }
-                )
-                /
-                sum by (namespace, pod) (
-                  kube_pod_container_resource_requests{
-                    namespace=~"voting-(staging|prod)",
-                    pod=~"redis-statefulset-.*",
-                    container="redis-container",
-                    resource="memory",
-                    unit="byte"
-                  }
-                )
-              ) > 0.80,
-              "target_namespace",
-              "$1",
-              "namespace",
-              "(.*)"
-            )
-          for: 10m
-          labels:
-            namespace: monitoring
-            severity: warning
-            component: redis
-          annotations:
-            summary: "Redis memory usage is high"
-            description: "Redis memory usage is above 80% of its requested memory for more than 10 minutes."
-
         - alert: RedisRejectedConnections
           expr: |
             label_replace(
@@ -90,7 +54,7 @@ spec:
           annotations:
             summary: "Redis is rejecting connections"
             description: "Redis has rejected client connections during the last 5 minutes."
-
+        
         - alert: RedisHighCPU
           expr: |
             label_replace(
@@ -128,6 +92,42 @@ spec:
           annotations:
             summary: "Redis CPU usage is high"
             description: "Redis CPU usage is above 80% of its requested CPU for more than 10 minutes."
+        
+        - alert: RedisHighMemoryUsage
+          expr: |
+            label_replace(
+              (
+                sum by (namespace, pod) (
+                  container_memory_working_set_bytes{
+                    namespace=~"voting-(staging|prod)",
+                    pod=~"redis-statefulset-.*",
+                    container="redis-container"
+                  }
+                )
+                /
+                sum by (namespace, pod) (
+                  kube_pod_container_resource_requests{
+                    namespace=~"voting-(staging|prod)",
+                    pod=~"redis-statefulset-.*",
+                    container="redis-container",
+                    resource="memory",
+                    unit="byte"
+                  }
+                )
+              ) > 0.80,
+              "target_namespace",
+              "$1",
+              "namespace",
+              "(.*)"
+            )
+          for: 10m
+          labels:
+            namespace: monitoring
+            severity: warning
+            component: redis
+          annotations:
+            summary: "Redis memory usage is high"
+            description: "Redis memory usage is above 80% of its requested memory for more than 10 minutes."
 
         - alert: RedisPodRestarting
           expr: |
