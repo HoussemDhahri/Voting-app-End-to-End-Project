@@ -13,117 +13,167 @@ spec:
 
         - alert: PostgreSQLDown
           expr: |
-            pg_up{
-              namespace="monitoring",
-              target=~"postgres-(staging|prod)"
-            } == 0
+            (
+              label_replace(
+                pg_up{
+                  namespace="monitoring",
+                  target=~"postgres-(staging|prod)"
+                },
+                "target_namespace",
+                "voting-$1",
+                "target",
+                "postgres-(staging|prod)"
+              ) == 0
+            )
+            and on (target_namespace)
+            (
+              label_replace(
+                kube_namespace_status_phase{
+                  namespace=~"voting-(staging|prod)",
+                  phase="Active"
+                },
+                "target_namespace",
+                "$1",
+                "namespace",
+                "(voting-(staging|prod))"
+              ) == 1
+            )
           for: 2m
           labels:
             severity: critical
             component: postgresql
+            namespace: monitoring
           annotations:
-            summary: "PostgreSQL is down"
-            description: "PostgreSQL has been unreachable for more than 2 minutes."
+            summary: "PostgreSQL is down in {{ $labels.target_namespace }}"
+            description: "PostgreSQL target {{ $labels.target }} in {{ $labels.target_namespace }} has been unreachable for more than 2 minutes."
 
         - alert: PostgreSQLHighConnections
           expr: |
-            (
-              sum by (namespace, target) (
-                pg_stat_database_numbackends{
-                  namespace="monitoring",
-                  target=~"postgres-(staging|prod)",
-                  datname!~"template0|template1"
-                }
-              )
-              /
-              on (namespace, target)
-              max by (namespace, target) (
-                pg_settings_max_connections{
-                  namespace="monitoring",
-                  target=~"postgres-(staging|prod)"
-                }
-              )
+            label_replace(
+              (
+                sum by (namespace, target) (
+                  pg_stat_database_numbackends{
+                    namespace="monitoring",
+                    target=~"postgres-(staging|prod)",
+                    datname!~"template0|template1"
+                  }
+                )
+                /
+                on (namespace, target)
+                max by (namespace, target) (
+                  pg_settings_max_connections{
+                    namespace="monitoring",
+                    target=~"postgres-(staging|prod)"
+                  }
+                )
+              ) > 0.80,
+              "target_namespace",
+              "voting-$1",
+              "target",
+              "postgres-(staging|prod)"
+            )
+          for: 10m
+          labels:
+            severity: warning
+            component: postgresql
+            namespace: monitoring
+          annotations:
+            summary: "PostgreSQL connections are high in {{ $labels.target_namespace }}"
+            description: "PostgreSQL target {{ $labels.target }} in {{ $labels.target_namespace }} is using more than 80% of its configured maximum connections for more than 10 minutes."
+
+        - alert: PostgreSQLHighCPU
+          expr: |
+            label_replace(
+              (
+                sum by (namespace, pod) (
+                  rate(
+                    container_cpu_usage_seconds_total{
+                      namespace=~"voting-(staging|prod)",
+                      pod=~"postgres-.*",
+                      container!="",
+                      container!="POD"
+                    }[5m]
+                  )
+                )
+                /
+                sum by (namespace, pod) (
+                  kube_pod_container_resource_requests{
+                    namespace=~"voting-(staging|prod)",
+                    pod=~"postgres-.*",
+                    resource="cpu",
+                    unit="core"
+                  }
+                )
+              ),
+              "target_namespace",
+              "$1",
+              "namespace",
+              "(voting-(staging|prod))"
             ) > 0.80
           for: 10m
           labels:
             severity: warning
             component: postgresql
+            namespace: monitoring
           annotations:
-            summary: "PostgreSQL connections are high"
-            description: "PostgreSQL is using more than 80% of its configured maximum connections for more than 10 minutes."
+            summary: "PostgreSQL CPU is high in {{ $labels.target_namespace }}"
+            description: "PostgreSQL pod {{ $labels.pod }} in {{ $labels.target_namespace }} is using more than 80% of its requested CPU for more than 10 minutes."
 
-        - alert: PostgreSQLHighCPU
+        - alert: PostgreSQLHighMemory
           expr: |
-            (
-              sum by (namespace, pod) (
-                rate(
-                  container_cpu_usage_seconds_total{
+            label_replace(
+              (
+                sum by (namespace, pod) (
+                  container_memory_working_set_bytes{
                     namespace=~"voting-(staging|prod)",
                     pod=~"postgres-.*",
                     container!="",
                     container!="POD"
-                  }[5m]
+                  }
                 )
-              )
-              /
-              sum by (namespace, pod) (
-                kube_pod_container_resource_requests{
-                  namespace=~"voting-(staging|prod)",
-                  pod=~"postgres-.*",
-                  resource="cpu",
-                  unit="core"
-                }
-              )
+                /
+                sum by (namespace, pod) (
+                  kube_pod_container_resource_requests{
+                    namespace=~"voting-(staging|prod)",
+                    pod=~"postgres-.*",
+                    resource="memory",
+                    unit="byte"
+                  }
+                )
+              ),
+              "target_namespace",
+              "$1",
+              "namespace",
+              "(voting-(staging|prod))"
             ) > 0.80
           for: 10m
           labels:
             severity: warning
             component: postgresql
+            namespace: monitoring
           annotations:
-            summary: "PostgreSQL CPU usage is high"
-            description: "PostgreSQL CPU usage is above 80% of its requested CPU for more than 10 minutes."
-
-        - alert: PostgreSQLHighMemory
-          expr: |
-            (
-              sum by (namespace, pod) (
-                container_memory_working_set_bytes{
-                  namespace=~"voting-(staging|prod)",
-                  pod=~"postgres-.*",
-                  container!="",
-                  container!="POD"
-                }
-              )
-              /
-              sum by (namespace, pod) (
-                kube_pod_container_resource_requests{
-                  namespace=~"voting-(staging|prod)",
-                  pod=~"postgres-.*",
-                  resource="memory",
-                  unit="byte"
-                }
-              )
-            ) > 0.80
-          for: 10m
-          labels:
-            severity: warning
-            component: postgresql
-          annotations:
-            summary: "PostgreSQL memory usage is high"
-            description: "PostgreSQL memory usage is above 80% of its requested memory for more than 10 minutes."
+            summary: "PostgreSQL memory is high in {{ $labels.target_namespace }}"
+            description: "PostgreSQL pod {{ $labels.pod }} in {{ $labels.target_namespace }} is using more than 80% of its requested memory for more than 10 minutes."
 
         - alert: PostgreSQLPodRestarting
           expr: |
-            increase(
-              kube_pod_container_status_restarts_total{
-                namespace=~"voting-(staging|prod)",
-                pod=~"postgres-.*"
-              }[10m]
-            ) > 3
-          for: 1m
+            label_replace(
+              increase(
+                kube_pod_container_status_restarts_total{
+                  namespace=~"voting-(staging|prod)",
+                  pod=~"postgres-.*"
+                }[10m]
+              ) > 3,
+              "target_namespace",
+              "$1",
+              "namespace",
+              "(voting-(staging|prod))"
+            )
+          for: 3m
           labels:
             severity: warning
             component: postgresql
+            namespace: monitoring
           annotations:
-            summary: "PostgreSQL pod is restarting"
-            description: "The PostgreSQL pod has restarted more than 3 times in the last 10 minutes."
+            summary: "PostgreSQL pod is restarting in {{ $labels.target_namespace }}"
+            description: "PostgreSQL pod {{ $labels.pod }} in {{ $labels.target_namespace }} has restarted more than 3 times in the last 10 minutes."

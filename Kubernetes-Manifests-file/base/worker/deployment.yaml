@@ -30,9 +30,9 @@ spec:
                 name: worker-secret
 
           resources:
-            limits:
-              cpu: "500m"
-              memory: "256Mi"
             requests:
-              cpu: "250m"
+              cpu: "500m"
               memory: "128Mi"
+            limits:
+              cpu: "750m"
+              memory: "256Mi"
