@@ -1,0 +1,2305 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: voting-monitoring-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  voting-monitoring-dashboard.json: |
+    {
+      "annotations": {
+        "list": []
+      },
+      "editable": false,
+      "graphTooltip": 1,
+      "links": [],
+      "panels": [
+        {
+          "id": 1,
+          "type": "row",
+          "title": "🌐 Application Overview",
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 0
+          },
+          "collapsed": false,
+          "panels": []
+        },
+        {
+          "id": 2,
+          "type": "stat",
+          "title": "Vote Status",
+          "gridPos": {
+            "h": 5,
+            "w": 5,
+            "x": 0,
+            "y": 1
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "min(probe_success{job=\"vote-frontend-blackbox\",instance=~\".*${namespace}.*\"}) or vector(0)"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "min": 0,
+              "max": 1,
+              "unit": "short",
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "0": {
+                      "text": "DOWN",
+                      "color": "red"
+                    },
+                    "1": {
+                      "text": "UP",
+                      "color": "green"
+                    }
+                  }
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 1
+                  }
+                ]
+              }
+            }
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "orientation": "horizontal",
+            "textMode": "auto",
+            "colorMode": "background",
+            "justifyMode": "center",
+            "graphMode": "none"
+          },
+          "description": "Synthetic blackbox probe result for the vote service endpoint (1=reachable, 0=unreachable)."
+        },
+        {
+          "id": 3,
+          "type": "stat",
+          "title": "Result Status",
+          "gridPos": {
+            "h": 5,
+            "w": 5,
+            "x": 5,
+            "y": 1
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "min(probe_success{job=\"result-frontend-blackbox\",instance=~\".*${namespace}.*\"}) or vector(0)"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "min": 0,
+              "max": 1,
+              "unit": "short",
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "0": {
+                      "text": "DOWN",
+                      "color": "red"
+                    },
+                    "1": {
+                      "text": "UP",
+                      "color": "green"
+                    }
+                  }
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 1
+                  }
+                ]
+              }
+            }
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "orientation": "horizontal",
+            "textMode": "auto",
+            "colorMode": "background",
+            "justifyMode": "center",
+            "graphMode": "none"
+          },
+          "description": "Synthetic blackbox probe result for the result service endpoint (1=reachable, 0=unreachable)."
+        },
+        {
+          "id": 4,
+          "type": "stat",
+          "title": "Worker Status",
+          "gridPos": {
+            "h": 5,
+            "w": 4,
+            "x": 10,
+            "y": 1
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "min(kube_deployment_status_replicas_available{namespace=\"$namespace\",deployment=\"worker-deployment\"} >= bool clamp_min(kube_deployment_spec_replicas{namespace=\"$namespace\",deployment=\"worker-deployment\"},1)) or vector(0)"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "min": 0,
+              "max": 1,
+              "unit": "short",
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "0": {
+                      "text": "DOWN",
+                      "color": "red"
+                    },
+                    "1": {
+                      "text": "UP",
+                      "color": "green"
+                    }
+                  }
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 1
+                  }
+                ]
+              }
+            }
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "orientation": "horizontal",
+            "textMode": "auto",
+            "colorMode": "background",
+            "justifyMode": "center",
+            "graphMode": "none"
+          },
+          "description": "Whether the worker deployment has as many ready replicas as it is configured to run (no HTTP endpoint to probe)."
+        },
+        {
+          "id": 5,
+          "type": "stat",
+          "title": "Redis Status",
+          "gridPos": {
+            "h": 5,
+            "w": 5,
+            "x": 14,
+            "y": 1
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "min(redis_up{instance=~\".*${namespace}.*\"}) or vector(0)"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "min": 0,
+              "max": 1,
+              "unit": "short",
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "0": {
+                      "text": "DOWN",
+                      "color": "red"
+                    },
+                    "1": {
+                      "text": "UP",
+                      "color": "green"
+                    }
+                  }
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 1
+                  }
+                ]
+              }
+            }
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "orientation": "horizontal",
+            "textMode": "auto",
+            "colorMode": "background",
+            "justifyMode": "center",
+            "graphMode": "none"
+          },
+          "description": "Availability reported by redis_exporter (1=up, 0=down)."
+        },
+        {
+          "id": 6,
+          "type": "stat",
+          "title": "PostgreSQL Status",
+          "gridPos": {
+            "h": 5,
+            "w": 5,
+            "x": 19,
+            "y": 1
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "min(pg_up{instance=~\".*${namespace}.*\"}) or vector(0)"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "min": 0,
+              "max": 1,
+              "unit": "short",
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "0": {
+                      "text": "DOWN",
+                      "color": "red"
+                    },
+                    "1": {
+                      "text": "UP",
+                      "color": "green"
+                    }
+                  }
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 1
+                  }
+                ]
+              }
+            }
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "orientation": "horizontal",
+            "textMode": "auto",
+            "colorMode": "background",
+            "justifyMode": "center",
+            "graphMode": "none"
+          },
+          "description": "Availability reported by postgres_exporter (1=up, 0=down)."
+        },
+        {
+          "id": 7,
+          "type": "table",
+          "title": "Container Restarts (Total)",
+          "description": "Cumulative restart count per container since last pod start.",
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 6
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "format": "table",
+              "instant": true,
+              "expr": "sort_desc(sum by (pod, container) (kube_pod_container_status_restarts_total{namespace=\"$namespace\",container!=\"\",container!=\"POD\"}))"
+            }
+          ],
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true
+                },
+                "indexByName": {
+                  "pod": 0,
+                  "container": 1,
+                  "Value": 2
+                },
+                "renameByName": {
+                  "pod": "Pod",
+                  "container": "Container",
+                  "Value": "Restarts"
+                }
+              }
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                }
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Restarts"
+                },
+                "properties": [
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-background"
+                    }
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "green",
+                          "value": null
+                        },
+                        {
+                          "color": "yellow",
+                          "value": 1
+                        },
+                        {
+                          "color": "red",
+                          "value": 3
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "showHeader": true,
+            "cellHeight": "sm",
+            "footer": {
+              "show": false
+            },
+            "columnWidth": {
+              "Pod": 55,
+              "Container": 32,
+              "Restarts": 16
+            }
+          }
+        },
+        {
+          "id": 8,
+          "type": "table",
+          "title": "Containers With Problems (Waiting Reason)",
+          "description": "Containers currently stuck in a non-running waiting state.",
+          "gridPos": {
+            "h": 6,
+            "w": 24,
+            "x": 0,
+            "y": 14
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "format": "table",
+              "instant": true,
+              "expr": "kube_pod_container_status_waiting_reason{namespace=\"$namespace\"} == 1"
+            }
+          ],
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "__name__": true,
+                  "job": true,
+                  "instance": true,
+                  "endpoint": true,
+                  "service": true,
+                  "uid": true,
+                  "namespace": true,
+                  "Value": true
+                },
+                "indexByName": {
+                  "pod": 0,
+                  "container": 1,
+                  "reason": 2
+                },
+                "renameByName": {
+                  "pod": "Pod",
+                  "container": "Container",
+                  "reason": "Reason"
+                }
+              }
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                }
+              }
+            }
+          },
+          "options": {
+            "showHeader": true,
+            "cellHeight": "sm",
+            "footer": {
+              "show": false
+            },
+            "columnWidth": {
+              "Pod": 55,
+              "Container": 32,
+              "Reason": 32
+            }
+          }
+        },
+        {
+          "id": 9,
+          "type": "row",
+          "title": "📊 Application Performance",
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 20
+          },
+          "collapsed": false,
+          "panels": []
+        },
+        {
+          "id": 10,
+          "type": "timeseries",
+          "title": "Vote Requests/sec",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 21
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "legendFormat": "Requests/sec",
+              "expr": "sum(rate(vote_requests_total{namespace=\"$namespace\"}[5m]))"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps",
+              "min": 0,
+              "decimals": 2,
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "showPoints": "auto",
+                "axisPlacement": "left"
+              }
+            }
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          }
+        },
+        {
+          "id": 11,
+          "type": "timeseries",
+          "title": "Vote Application Error Rate",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 21
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "legendFormat": "Application Error Rate",
+              "expr": "100 * sum(rate(vote_errors_total{namespace=\"$namespace\"}[5m])) / clamp_min(sum(rate(vote_requests_total{namespace=\"$namespace\"}[5m])), 0.001)"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "min": 0,
+              "decimals": 2,
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "showPoints": "auto",
+                "axisPlacement": "left"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 1
+                  },
+                  {
+                    "color": "red",
+                    "value": 5
+                  }
+                ]
+              }
+            }
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          }
+        },
+        {
+          "id": 12,
+          "type": "row",
+          "title": "🖥️ Frontend — Vote",
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 29
+          },
+          "collapsed": false,
+          "panels": []
+        },
+        {
+          "id": 13,
+          "type": "timeseries",
+          "title": "Vote CPU Usage vs Limit (Per Pod)",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 30
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "legendFormat": "Usage - {{pod}}",
+              "expr": "1000 * sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"$namespace\",container=\"vote-container\",image!=\"\"}[5m]))"
+            },
+            {
+              "refId": "B",
+              "legendFormat": "Limit - Vote",
+              "expr": "1000 * scalar(max(kube_pod_container_resource_limits{namespace=\"$namespace\",container=\"vote-container\",resource=\"cpu\",unit=\"core\"}))"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "suffix:m",
+              "min": 0,
+              "decimals": 0,
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "showPoints": "auto",
+                "axisPlacement": "left"
+              }
+            }
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "description": "Vote container CPU usage per pod compared against its configured CPU limit."
+        },
+        {
+          "id": 14,
+          "type": "timeseries",
+          "title": "Vote Memory Usage vs Limit (Per Pod)",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 30
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "legendFormat": "Usage - {{pod}}",
+              "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=\"$namespace\",container=\"vote-container\",image!=\"\"})"
+            },
+            {
+              "refId": "B",
+              "legendFormat": "Limit - Vote",
+              "expr": "scalar(max(kube_pod_container_resource_limits{namespace=\"$namespace\",container=\"vote-container\",resource=\"memory\",unit=\"byte\"}))"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "min": 0,
+              "decimals": 2,
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "showPoints": "auto",
+                "axisPlacement": "left"
+              }
+            }
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "description": "Vote container memory usage per pod compared against its configured memory limit."
+        },
+        {
+          "id": 15,
+          "type": "row",
+          "title": "🖥️ Frontend — Result",
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 38
+          },
+          "collapsed": false,
+          "panels": []
+        },
+        {
+          "id": 16,
+          "type": "timeseries",
+          "title": "Result CPU Usage vs Limit (Per Pod)",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 39
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "legendFormat": "Usage - {{pod}}",
+              "expr": "1000 * sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"$namespace\",container=\"result-container\",image!=\"\"}[5m]))"
+            },
+            {
+              "refId": "B",
+              "legendFormat": "Limit - Result",
+              "expr": "1000 * scalar(max(kube_pod_container_resource_limits{namespace=\"$namespace\",container=\"result-container\",resource=\"cpu\",unit=\"core\"}))"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "suffix:m",
+              "min": 0,
+              "decimals": 0,
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "showPoints": "auto",
+                "axisPlacement": "left"
+              }
+            }
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "description": "Result container CPU usage per pod compared against its configured CPU limit."
+        },
+        {
+          "id": 17,
+          "type": "timeseries",
+          "title": "Result Memory Usage vs Limit (Per Pod)",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 39
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "legendFormat": "Usage - {{pod}}",
+              "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=\"$namespace\",container=\"result-container\",image!=\"\"})"
+            },
+            {
+              "refId": "B",
+              "legendFormat": "Limit - Result",
+              "expr": "scalar(max(kube_pod_container_resource_limits{namespace=\"$namespace\",container=\"result-container\",resource=\"memory\",unit=\"byte\"}))"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "min": 0,
+              "decimals": 2,
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "showPoints": "auto",
+                "axisPlacement": "left"
+              }
+            }
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "description": "Result container memory usage per pod compared against its configured memory limit."
+        },
+        {
+          "id": 18,
+          "type": "row",
+          "title": "⚙️ Backend — Worker",
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 47
+          },
+          "collapsed": false,
+          "panels": []
+        },
+        {
+          "id": 19,
+          "type": "timeseries",
+          "title": "Worker CPU Usage vs Limit (Per Pod)",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 48
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "legendFormat": "Usage - {{pod}}",
+              "expr": "1000 * sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"$namespace\",container=\"worker-container\",image!=\"\"}[5m]))"
+            },
+            {
+              "refId": "B",
+              "legendFormat": "Limit - Worker",
+              "expr": "1000 * scalar(max(kube_pod_container_resource_limits{namespace=\"$namespace\",container=\"worker-container\",resource=\"cpu\",unit=\"core\"}))"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "suffix:m",
+              "min": 0,
+              "decimals": 0,
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "showPoints": "auto",
+                "axisPlacement": "left"
+              }
+            }
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "description": "Worker container CPU usage per pod compared against its configured CPU limit."
+        },
+        {
+          "id": 20,
+          "type": "timeseries",
+          "title": "Worker Memory Usage vs Limit (Per Pod)",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 48
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "legendFormat": "Usage - {{pod}}",
+              "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=\"$namespace\",container=\"worker-container\",image!=\"\"})"
+            },
+            {
+              "refId": "B",
+              "legendFormat": "Limit - Worker",
+              "expr": "scalar(max(kube_pod_container_resource_limits{namespace=\"$namespace\",container=\"worker-container\",resource=\"memory\",unit=\"byte\"}))"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "min": 0,
+              "decimals": 2,
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "showPoints": "auto",
+                "axisPlacement": "left"
+              }
+            }
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "description": "Worker container memory usage per pod compared against its configured memory limit."
+        },
+        {
+          "id": 21,
+          "type": "timeseries",
+          "title": "Worker CPU Throttling (%)",
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 56
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "legendFormat": "{{pod}}",
+              "expr": "100 * sum by (pod) (rate(container_cpu_cfs_throttled_periods_total{namespace=\"$namespace\",container=\"worker-container\",image!=\"\"}[5m])) / clamp_min(sum by (pod) (rate(container_cpu_cfs_periods_total{namespace=\"$namespace\",container=\"worker-container\",image!=\"\"}[5m])),0.001)"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "min": 0,
+              "decimals": 1,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 5
+                  },
+                  {
+                    "color": "red",
+                    "value": 15
+                  }
+                ]
+              }
+            }
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          },
+          "description": "Percentage of CPU periods in which the worker container was throttled by the CFS scheduler."
+        },
+        {
+          "id": 22,
+          "type": "row",
+          "title": "🗄️ Database — Redis",
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 64
+          },
+          "collapsed": false,
+          "panels": []
+        },
+        {
+          "id": 23,
+          "type": "timeseries",
+          "title": "Redis CPU Usage vs Limit (Per Pod)",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 65
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "legendFormat": "Usage - {{pod}}",
+              "expr": "1000 * sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"$namespace\",container=\"redis-container\",image!=\"\"}[5m]))"
+            },
+            {
+              "refId": "B",
+              "legendFormat": "Limit - Redis",
+              "expr": "1000 * scalar(max(kube_pod_container_resource_limits{namespace=\"$namespace\",container=\"redis-container\",resource=\"cpu\",unit=\"core\"}))"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "suffix:m",
+              "min": 0,
+              "decimals": 0,
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "showPoints": "auto",
+                "axisPlacement": "left"
+              }
+            }
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "description": "Redis container CPU usage per pod compared against its configured CPU limit."
+        },
+        {
+          "id": 24,
+          "type": "timeseries",
+          "title": "Redis Memory Usage vs Limit (Per Pod)",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 65
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "legendFormat": "Usage - {{pod}}",
+              "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=\"$namespace\",container=\"redis-container\",image!=\"\"})"
+            },
+            {
+              "refId": "B",
+              "legendFormat": "Limit - Redis",
+              "expr": "scalar(max(kube_pod_container_resource_limits{namespace=\"$namespace\",container=\"redis-container\",resource=\"memory\",unit=\"byte\"}))"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "min": 0,
+              "decimals": 2,
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "showPoints": "auto",
+                "axisPlacement": "left"
+              }
+            }
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "description": "Redis container memory usage per pod compared against its configured memory limit."
+        },
+        {
+          "id": 25,
+          "type": "timeseries",
+          "title": "Redis Connections",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 73
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "legendFormat": "Connected Clients",
+              "expr": "max(redis_connected_clients{instance=~\".*${namespace}.*\"}) or vector(0)"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "min": 0,
+              "decimals": 0,
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "showPoints": "auto",
+                "axisPlacement": "left"
+              }
+            }
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "description": "Number of clients currently connected to Redis, reported by redis_exporter."
+        },
+        {
+          "id": 26,
+          "type": "timeseries",
+          "title": "Redis Commands/sec",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 73
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "legendFormat": "Commands/sec",
+              "expr": "sum(rate(redis_commands_processed_total{instance=~\".*${namespace}.*\"}[5m]))"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ops",
+              "min": 0,
+              "decimals": 2,
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "showPoints": "auto",
+                "axisPlacement": "left"
+              }
+            }
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "description": "Rate of commands processed by Redis, reported by redis_exporter."
+        },
+        {
+          "id": 27,
+          "type": "row",
+          "title": "🗄️ Database — PostgreSQL",
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 81
+          },
+          "collapsed": false,
+          "panels": []
+        },
+        {
+          "id": 28,
+          "type": "timeseries",
+          "title": "PostgreSQL CPU Usage vs Limit (Per Pod)",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 82
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "legendFormat": "Usage - {{pod}}",
+              "expr": "1000 * sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"$namespace\",container=\"postgres-container\",image!=\"\"}[5m]))"
+            },
+            {
+              "refId": "B",
+              "legendFormat": "Limit - PostgreSQL",
+              "expr": "1000 * scalar(max(kube_pod_container_resource_limits{namespace=\"$namespace\",container=\"postgres-container\",resource=\"cpu\",unit=\"core\"}))"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "suffix:m",
+              "min": 0,
+              "decimals": 0,
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "showPoints": "auto",
+                "axisPlacement": "left"
+              }
+            }
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "description": "PostgreSQL container CPU usage per pod compared against its configured CPU limit."
+        },
+        {
+          "id": 29,
+          "type": "timeseries",
+          "title": "PostgreSQL Memory Usage vs Limit (Per Pod)",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 82
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "legendFormat": "Usage - {{pod}}",
+              "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=\"$namespace\",container=\"postgres-container\",image!=\"\"})"
+            },
+            {
+              "refId": "B",
+              "legendFormat": "Limit - PostgreSQL",
+              "expr": "scalar(max(kube_pod_container_resource_limits{namespace=\"$namespace\",container=\"postgres-container\",resource=\"memory\",unit=\"byte\"}))"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "min": 0,
+              "decimals": 2,
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "showPoints": "auto",
+                "axisPlacement": "left"
+              }
+            }
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "description": "PostgreSQL container memory usage per pod compared against its configured memory limit."
+        },
+        {
+          "id": 30,
+          "type": "timeseries",
+          "title": "PostgreSQL Connections",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 90
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "legendFormat": "Active Connections",
+              "expr": "sum(pg_stat_activity_count{instance=~\".*${namespace}.*\"}) or vector(0)"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "min": 0,
+              "decimals": 0,
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "showPoints": "auto",
+                "axisPlacement": "left"
+              }
+            }
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "description": "Total active PostgreSQL connections across all databases, reported by postgres_exporter."
+        },
+        {
+          "id": 31,
+          "type": "timeseries",
+          "title": "PostgreSQL Transactions",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 90
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "legendFormat": "Commits/sec",
+              "expr": "sum(rate(pg_stat_database_xact_commit{instance=~\".*${namespace}.*\"}[5m]))"
+            },
+            {
+              "refId": "B",
+              "legendFormat": "Rollbacks/sec",
+              "expr": "sum(rate(pg_stat_database_xact_rollback{instance=~\".*${namespace}.*\"}[5m]))"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ops",
+              "min": 0,
+              "decimals": 2,
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "showPoints": "auto",
+                "axisPlacement": "left"
+              }
+            }
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "description": "Rate of committed and rolled-back transactions across all databases."
+        },
+        {
+          "id": 32,
+          "type": "table",
+          "title": "PostgreSQL Storage (PVC)",
+          "description": "PostgreSQL data volume storage usage (PVC-level): total capacity, used, available and usage percentage.",
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 98
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "format": "table",
+              "instant": true,
+              "expr": "max by (persistentvolumeclaim) (local_pvc_capacity_bytes{exported_namespace=\"$namespace\",persistentvolumeclaim=~\".*postgres.*\"})"
+            },
+            {
+              "refId": "B",
+              "format": "table",
+              "instant": true,
+              "expr": "max by (persistentvolumeclaim) (local_pvc_used_bytes{exported_namespace=\"$namespace\",persistentvolumeclaim=~\".*postgres.*\"})"
+            },
+            {
+              "refId": "C",
+              "format": "table",
+              "instant": true,
+              "expr": "max by (persistentvolumeclaim) (local_pvc_available_bytes{exported_namespace=\"$namespace\",persistentvolumeclaim=~\".*postgres.*\"})"
+            },
+            {
+              "refId": "D",
+              "format": "table",
+              "instant": true,
+              "expr": "100 * max by (persistentvolumeclaim) (local_pvc_used_ratio{exported_namespace=\"$namespace\",persistentvolumeclaim=~\".*postgres.*\"})"
+            }
+          ],
+          "transformations": [
+            {
+              "id": "joinByField",
+              "options": {
+                "byField": "persistentvolumeclaim",
+                "mode": "outer"
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "__name__": true,
+                  "exported_namespace": true,
+                  "namespace": true,
+                  "job": true,
+                  "instance": true,
+                  "container": true,
+                  "endpoint": true,
+                  "pod": true,
+                  "service": true,
+                  "node": true,
+                  "persistentvolume": true,
+                  "storageclass": true,
+                  "volume_type": true
+                },
+                "indexByName": {
+                  "persistentvolumeclaim": 0,
+                  "Value #A": 1,
+                  "Value #B": 2,
+                  "Value #C": 3,
+                  "Value #D": 4
+                },
+                "renameByName": {
+                  "persistentvolumeclaim": "Name",
+                  "Value #A": "Total",
+                  "Value #B": "Used",
+                  "Value #C": "Available",
+                  "Value #D": "Usage %"
+                }
+              }
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                }
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Total"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "bytes"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 1
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Used"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "bytes"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 1
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Available"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "bytes"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 1
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Usage %"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "percent"
+                  },
+                  {
+                    "id": "decimals",
+                    "value": 1
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-background"
+                    }
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "green",
+                          "value": null
+                        },
+                        {
+                          "color": "yellow",
+                          "value": 70
+                        },
+                        {
+                          "color": "red",
+                          "value": 85
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "showHeader": true,
+            "cellHeight": "sm",
+            "footer": {
+              "show": false
+            },
+            "columnWidth": {
+              "Name": 30,
+              "Total": 18,
+              "Used": 18,
+              "Available": 18,
+              "Usage %": 16
+            }
+          }
+        },
+        {
+          "id": 33,
+          "type": "timeseries",
+          "title": "PostgreSQL DB Size",
+          "description": "Size of each PostgreSQL database over time.",
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 106
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "legendFormat": "{{datname}}",
+              "expr": "max by (datname) (pg_database_size_bytes{instance=~\".*${namespace}.*\"})"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "min": 0,
+              "decimals": 2,
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "showPoints": "auto",
+                "axisPlacement": "left"
+              }
+            }
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          }
+        },
+        {
+          "id": 34,
+          "type": "row",
+          "title": "⭐ HPA",
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 114
+          },
+          "collapsed": false,
+          "panels": []
+        },
+        {
+          "id": 35,
+          "type": "table",
+          "title": "HPA Replicas",
+          "description": "Current and desired replicas with the configured minimum and maximum for each Voting workload.",
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 115
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "format": "table",
+              "instant": true,
+              "expr": "kube_horizontalpodautoscaler_status_current_replicas{namespace=\"$namespace\",horizontalpodautoscaler=~\"(vote|result|worker)-hpa\"}"
+            },
+            {
+              "refId": "B",
+              "format": "table",
+              "instant": true,
+              "expr": "kube_horizontalpodautoscaler_status_desired_replicas{namespace=\"$namespace\",horizontalpodautoscaler=~\"(vote|result|worker)-hpa\"}"
+            },
+            {
+              "refId": "C",
+              "format": "table",
+              "instant": true,
+              "expr": "kube_horizontalpodautoscaler_spec_min_replicas{namespace=\"$namespace\",horizontalpodautoscaler=~\"(vote|result|worker)-hpa\"}"
+            },
+            {
+              "refId": "D",
+              "format": "table",
+              "instant": true,
+              "expr": "kube_horizontalpodautoscaler_spec_max_replicas{namespace=\"$namespace\",horizontalpodautoscaler=~\"(vote|result|worker)-hpa\"}"
+            }
+          ],
+          "transformations": [
+            {
+              "id": "joinByField",
+              "options": {
+                "byField": "horizontalpodautoscaler",
+                "mode": "inner"
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "__name__": true,
+                  "namespace": true,
+                  "endpoint": true,
+                  "instance": true,
+                  "job": true,
+                  "pod": true,
+                  "service": true,
+                  "container": true
+                },
+                "indexByName": {
+                  "horizontalpodautoscaler": 0,
+                  "Value #A": 1,
+                  "Value #B": 2,
+                  "Value #C": 3,
+                  "Value #D": 4
+                },
+                "renameByName": {
+                  "horizontalpodautoscaler": "Workload",
+                  "Value #A": "Current",
+                  "Value #B": "Desired",
+                  "Value #C": "Min",
+                  "Value #D": "Max"
+                }
+              }
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "decimals": 0,
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                }
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Workload"
+                },
+                "properties": [
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "type": "value",
+                        "options": {
+                          "vote-hpa": {
+                            "text": "Vote"
+                          },
+                          "result-hpa": {
+                            "text": "Result"
+                          },
+                          "worker-hpa": {
+                            "text": "Worker"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Current"
+                },
+                "properties": [
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "green",
+                          "value": null
+                        },
+                        {
+                          "color": "yellow",
+                          "value": 6
+                        },
+                        {
+                          "color": "red",
+                          "value": 9
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "id": "color",
+                    "value": "thresholds"
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-background"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "showHeader": true,
+            "cellHeight": "sm",
+            "footer": {
+              "show": false
+            }
+          }
+        },
+        {
+          "id": 36,
+          "type": "timeseries",
+          "title": "CPU Usage vs HPA Target",
+          "description": "CPU utilization of each Voting workload compared with its Kubernetes HPA CPU target.",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 123
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "legendFormat": "Vote",
+              "expr": "100 * sum by (namespace) (rate(container_cpu_usage_seconds_total{namespace=\"$namespace\",container!=\"\",container!=\"POD\",pod=~\"vote.*\"}[5m])) / clamp_min(sum by (namespace) (kube_pod_container_resource_requests{namespace=\"$namespace\",resource=\"cpu\",unit=\"core\",pod=~\"vote.*\"}), 0.001)"
+            },
+            {
+              "refId": "B",
+              "legendFormat": "Result",
+              "expr": "100 * sum by (namespace) (rate(container_cpu_usage_seconds_total{namespace=\"$namespace\",container!=\"\",container!=\"POD\",pod=~\"result.*\"}[5m])) / clamp_min(sum by (namespace) (kube_pod_container_resource_requests{namespace=\"$namespace\",resource=\"cpu\",unit=\"core\",pod=~\"result.*\"}), 0.001)"
+            },
+            {
+              "refId": "C",
+              "legendFormat": "Worker",
+              "expr": "100 * sum by (namespace) (rate(container_cpu_usage_seconds_total{namespace=\"$namespace\",container!=\"\",container!=\"POD\",pod=~\"worker.*\"}[5m])) / clamp_min(sum by (namespace) (kube_pod_container_resource_requests{namespace=\"$namespace\",resource=\"cpu\",unit=\"core\",pod=~\"worker.*\"}), 0.001)"
+            },
+            {
+              "refId": "D",
+              "legendFormat": "Vote Target",
+              "expr": "kube_horizontalpodautoscaler_spec_target_metric{namespace=\"$namespace\",horizontalpodautoscaler=\"vote-hpa\",metric_name=\"cpu\",metric_target_type=\"utilization\"}"
+            },
+            {
+              "refId": "E",
+              "legendFormat": "Result Target",
+              "expr": "kube_horizontalpodautoscaler_spec_target_metric{namespace=\"$namespace\",horizontalpodautoscaler=\"result-hpa\",metric_name=\"cpu\",metric_target_type=\"utilization\"}"
+            },
+            {
+              "refId": "F",
+              "legendFormat": "Worker Target",
+              "expr": "kube_horizontalpodautoscaler_spec_target_metric{namespace=\"$namespace\",horizontalpodautoscaler=\"worker-hpa\",metric_name=\"cpu\",metric_target_type=\"utilization\"}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "min": 0,
+              "max": 100,
+              "decimals": 1,
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "showPoints": "auto",
+                "axisPlacement": "left"
+              }
+            }
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          }
+        },
+        {
+          "id": 37,
+          "type": "timeseries",
+          "title": "Memory Usage vs HPA Target",
+          "description": "Memory utilization of each Voting workload compared with its Kubernetes HPA memory target.",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 123
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "legendFormat": "Vote",
+              "expr": "100 * sum by (namespace) (container_memory_working_set_bytes{namespace=\"$namespace\",container!=\"\",container!=\"POD\",pod=~\"vote.*\"}) / clamp_min(sum by (namespace) (kube_pod_container_resource_requests{namespace=\"$namespace\",resource=\"memory\",unit=\"byte\",pod=~\"vote.*\"}), 1)"
+            },
+            {
+              "refId": "B",
+              "legendFormat": "Result",
+              "expr": "100 * sum by (namespace) (container_memory_working_set_bytes{namespace=\"$namespace\",container!=\"\",container!=\"POD\",pod=~\"result.*\"}) / clamp_min(sum by (namespace) (kube_pod_container_resource_requests{namespace=\"$namespace\",resource=\"memory\",unit=\"byte\",pod=~\"result.*\"}), 1)"
+            },
+            {
+              "refId": "C",
+              "legendFormat": "Worker",
+              "expr": "100 * sum by (namespace) (container_memory_working_set_bytes{namespace=\"$namespace\",container!=\"\",container!=\"POD\",pod=~\"worker.*\"}) / clamp_min(sum by (namespace) (kube_pod_container_resource_requests{namespace=\"$namespace\",resource=\"memory\",unit=\"byte\",pod=~\"worker.*\"}), 1)"
+            },
+            {
+              "refId": "D",
+              "legendFormat": "Vote Target",
+              "expr": "kube_horizontalpodautoscaler_spec_target_metric{namespace=\"$namespace\",horizontalpodautoscaler=\"vote-hpa\",metric_name=\"memory\",metric_target_type=\"utilization\"}"
+            },
+            {
+              "refId": "E",
+              "legendFormat": "Result Target",
+              "expr": "kube_horizontalpodautoscaler_spec_target_metric{namespace=\"$namespace\",horizontalpodautoscaler=\"result-hpa\",metric_name=\"memory\",metric_target_type=\"utilization\"}"
+            },
+            {
+              "refId": "F",
+              "legendFormat": "Worker Target",
+              "expr": "kube_horizontalpodautoscaler_spec_target_metric{namespace=\"$namespace\",horizontalpodautoscaler=\"worker-hpa\",metric_name=\"memory\",metric_target_type=\"utilization\"}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "min": 0,
+              "max": 100,
+              "decimals": 1,
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "showPoints": "auto",
+                "axisPlacement": "left"
+              }
+            }
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          }
+        },
+        {
+          "id": 38,
+          "type": "row",
+          "title": "🚨 Alerts",
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 131
+          },
+          "collapsed": false,
+          "panels": []
+        },
+        {
+          "id": 39,
+          "type": "stat",
+          "title": "Active Alerts",
+          "gridPos": {
+            "h": 10,
+            "w": 8,
+            "x": 0,
+            "y": 132
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "count(ALERTS{target_namespace=\"$namespace\",alertname=~\"(Vote|Result|Worker|Redis|PostgreSQL).*\",alertstate=\"firing\"}) or vector(0)"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              }
+            }
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "value",
+            "colorMode": "background",
+            "justifyMode": "center",
+            "graphMode": "none"
+          },
+          "description": "Count of currently firing Voting-app-related Prometheus alerts."
+        },
+        {
+          "id": 40,
+          "type": "table",
+          "title": "Active Voting Alerts",
+          "description": "Currently firing Voting app alerts.",
+          "gridPos": {
+            "h": 10,
+            "w": 16,
+            "x": 8,
+            "y": 132
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "format": "table",
+              "instant": true,
+              "expr": "ALERTS{target_namespace=\"$namespace\",alertname=~\"(Vote|Result|Worker|Redis|PostgreSQL).*\",alertstate=\"firing\"}"
+            }
+          ],
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "__name__": true,
+                  "alertstate": true,
+                  "container": true,
+                  "endpoint": true,
+                  "instance": true,
+                  "job": true,
+                  "namespace": true,
+                  "target_namespace": true,
+                  "Time": true,
+                  "service": true,
+                  "Value": true
+                },
+                "renameByName": {
+                  "alertname": "Alert",
+                  "component": "Component",
+                  "pod": "Pod",
+                  "severity": "Severity"
+                }
+              }
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                }
+              }
+            }
+          },
+          "options": {
+            "showHeader": true,
+            "cellHeight": "sm",
+            "footer": {
+              "show": false
+            },
+            "columnWidth": {
+              "Alert": 28,
+              "Component": 20,
+              "Pod": 28,
+              "Severity": 18
+            }
+          }
+        }
+      ],
+      "schemaVersion": 39,
+      "tags": [
+        "voting",
+        "kubernetes",
+        "prometheus",
+        "monitoring",
+        "devops"
+      ],
+      "templating": {
+        "list": [
+          {
+            "name": "namespace",
+            "label": "Environment",
+            "type": "custom",
+            "query": "voting-staging,voting-prod",
+            "includeAll": false,
+            "multi": false,
+            "current": {
+              "selected": true,
+              "text": "voting-staging",
+              "value": "voting-staging"
+            },
+            "options": [
+              {
+                "selected": true,
+                "text": "voting-staging",
+                "value": "voting-staging"
+              },
+              {
+                "selected": false,
+                "text": "voting-prod",
+                "value": "voting-prod"
+              }
+            ]
+          }
+        ]
+      },
+      "time": {
+        "from": "now-1h",
+        "to": "now"
+      },
+      "timepicker": {
+        "refresh_intervals": [
+          "30s",
+          "1m",
+          "5m",
+          "15m"
+        ]
+      },
+      "timezone": "browser",
+      "refresh": "30s",
+      "title": "🗳️ Voting App Monitoring",
+      "uid": "voting-monitoring",
+      "version": 21
+    }
