@@ -13,137 +13,255 @@ spec:
 
         - alert: VoteFrontendDown
           expr: |
-            probe_success{
-              job="vote-frontend-blackbox",
-              instance=~"http://vote-service\\.voting-(staging|prod)\\.svc:5000/.*"
-            } == 0
+            (
+              label_replace(
+                probe_success{
+                  job="vote-frontend-blackbox",
+                  instance=~"http://vote-service\\.voting-(staging|prod)\\.svc:5000/"
+                },
+                "target_namespace",
+                "$1",
+                "instance",
+                "http://vote-service\\.(voting-(staging|prod))\\.svc:5000/"
+              ) == 0
+            )
+            and on (target_namespace)
+            (
+              label_replace(
+                kube_namespace_status_phase{
+                  namespace=~"voting-(staging|prod)",
+                  phase="Active"
+                },
+                "target_namespace",
+                "$1",
+                "namespace",
+                "(voting-(staging|prod))"
+              ) == 1
+            )
           for: 2m
           labels:
             severity: critical
             component: vote
+            namespace: monitoring
           annotations:
-            summary: "Vote frontend is down"
-            description: "The Vote frontend is not reachable for more than 2 minutes."
+            summary: "Vote frontend is down in {{ $labels.target_namespace }}"
+            description: "Vote frontend target {{ $labels.instance }} is unreachable in {{ $labels.target_namespace }} for more than 2 minutes."
 
-        - alert: VoteFrontendHighErrorRate
+        - alert: VoteFrontendServerErrors
           expr: |
-            probe_http_status_code{
-              job="vote-frontend-blackbox",
-              instance=~"http://vote-service\\.voting-(staging|prod)\\.svc:5000/.*"
-            } >= 500
+            (
+              label_replace(
+                probe_http_status_code{
+                  job="vote-frontend-blackbox",
+                  instance=~"http://vote-service\\.voting-(staging|prod)\\.svc:5000/"
+                },
+                "target_namespace",
+                "$1",
+                "instance",
+                "http://vote-service\\.(voting-(staging|prod))\\.svc:5000/"
+              ) >= 500
+            )
+            and on (target_namespace)
+            (
+              label_replace(
+                kube_namespace_status_phase{
+                  namespace=~"voting-(staging|prod)",
+                  phase="Active"
+                },
+                "target_namespace",
+                "$1",
+                "namespace",
+                "(voting-(staging|prod))"
+              ) == 1
+            )
           for: 5m
           labels:
             severity: critical
             component: vote
+            namespace: monitoring
           annotations:
-            summary: "Vote frontend returning server errors"
-            description: "The Vote frontend is returning HTTP 5xx responses for more than 5 minutes."
+            summary: "Vote frontend server errors in {{ $labels.target_namespace }}"
+            description: "Vote frontend target {{ $labels.instance }} is returning HTTP 5xx responses in {{ $labels.target_namespace }} for more than 5 minutes."
 
         - alert: VoteFrontendClientErrors
           expr: |
-            probe_http_status_code{
-              job="vote-frontend-blackbox",
-              instance=~"http://vote-service\\.voting-(staging|prod)\\.svc:5000/.*"
-            } >= 400
-            and
-            probe_http_status_code{
-              job="vote-frontend-blackbox",
-              instance=~"http://vote-service\\.voting-(staging|prod)\\.svc:5000/.*"
-            } < 500
+            (
+              label_replace(
+                probe_http_status_code{
+                  job="vote-frontend-blackbox",
+                  instance=~"http://vote-service\\.voting-(staging|prod)\\.svc:5000/"
+                },
+                "target_namespace",
+                "$1",
+                "instance",
+                "http://vote-service\\.(voting-(staging|prod))\\.svc:5000/"
+              ) >= 400
+              and
+              label_replace(
+                probe_http_status_code{
+                  job="vote-frontend-blackbox",
+                  instance=~"http://vote-service\\.voting-(staging|prod)\\.svc:5000/"
+                },
+                "target_namespace",
+                "$1",
+                "instance",
+                "http://vote-service\\.(voting-(staging|prod))\\.svc:5000/"
+              ) < 500
+            )
+            and on (target_namespace)
+            (
+              label_replace(
+                kube_namespace_status_phase{
+                  namespace=~"voting-(staging|prod)",
+                  phase="Active"
+                },
+                "target_namespace",
+                "$1",
+                "namespace",
+                "(voting-(staging|prod))"
+              ) == 1
+            )
           for: 5m
           labels:
             severity: warning
             component: vote
+            namespace: monitoring
           annotations:
-            summary: "Vote frontend returning client errors"
-            description: "The Vote frontend is returning HTTP 4xx responses for more than 5 minutes."
+            summary: "Vote frontend client errors in {{ $labels.target_namespace }}"
+            description: "Vote frontend target {{ $labels.instance }} is returning HTTP 4xx responses in {{ $labels.target_namespace }} for more than 5 minutes."
 
         - alert: VoteFrontendSlow
           expr: |
-            probe_duration_seconds{
-              job="vote-frontend-blackbox",
-              instance=~"http://vote-service\\.voting-(staging|prod)\\.svc:5000/.*"
-            } > 2
+            (
+              label_replace(
+                probe_duration_seconds{
+                  job="vote-frontend-blackbox",
+                  instance=~"http://vote-service\\.voting-(staging|prod)\\.svc:5000/"
+                },
+                "target_namespace",
+                "$1",
+                "instance",
+                "http://vote-service\\.(voting-(staging|prod))\\.svc:5000/"
+              ) > 2
+            )
+            and on (target_namespace)
+            (
+              label_replace(
+                kube_namespace_status_phase{
+                  namespace=~"voting-(staging|prod)",
+                  phase="Active"
+                },
+                "target_namespace",
+                "$1",
+                "namespace",
+                "(voting-(staging|prod))"
+              ) == 1
+            )
           for: 5m
           labels:
             severity: warning
             component: vote
+            namespace: monitoring
           annotations:
-            summary: "Vote frontend is slow"
-            description: "The Vote frontend response time is above 2 seconds for more than 5 minutes."
+            summary: "Vote frontend is slow in {{ $labels.target_namespace }}"
+            description: "Vote frontend target {{ $labels.instance }} in {{ $labels.target_namespace }} has a response time above 2 seconds for more than 5 minutes."
 
         - alert: VoteFrontendHighCPU
           expr: |
-            (
-              sum by (namespace, pod) (
-                rate(
-                  container_cpu_usage_seconds_total{
+            label_replace(
+              (
+                sum by (namespace, pod) (
+                  rate(
+                    container_cpu_usage_seconds_total{
+                      namespace=~"voting-(staging|prod)",
+                      pod=~"vote-deployment-.*",
+                      container="vote-container"
+                    }[5m]
+                  )
+                )
+                /
+                sum by (namespace, pod) (
+                  kube_pod_container_resource_requests{
                     namespace=~"voting-(staging|prod)",
                     pod=~"vote-deployment-.*",
-                    container!="",
-                    container!="POD"
-                  }[5m]
+                    container="vote-container",
+                    resource="cpu",
+                    unit="core"
+                  }
                 )
-              )
-              /
-              sum by (namespace, pod) (
-                kube_pod_container_resource_requests{
-                  namespace=~"voting-(staging|prod)",
-                  pod=~"vote-deployment-.*",
-                  resource="cpu",
-                  unit="core"
-                }
-              )
+              ),
+              "target_namespace",
+              "$1",
+              "namespace",
+              "(voting-(staging|prod))"
             ) > 0.80
           for: 10m
           labels:
             severity: warning
             component: vote
+            namespace: monitoring
           annotations:
-            summary: "Vote frontend CPU usage is high"
-            description: "Vote frontend CPU usage is above 80% of its requested CPU for more than 10 minutes."
+            summary: "Vote frontend CPU is high in {{ $labels.target_namespace }}"
+            description: "Vote frontend pod {{ $labels.pod }} in {{ $labels.target_namespace }} is using more than 80% of its requested CPU for more than 10 minutes."
 
         - alert: VoteFrontendHighMemory
           expr: |
-            (
-              sum by (namespace, pod) (
-                container_memory_working_set_bytes{
-                  namespace=~"voting-(staging|prod)",
-                  pod=~"vote-deployment-.*",
-                  container!="",
-                  container!="POD"
-                }
-              )
-              /
-              sum by (namespace, pod) (
-                kube_pod_container_resource_requests{
-                  namespace=~"voting-(staging|prod)",
-                  pod=~"vote-deployment-.*",
-                  resource="memory",
-                  unit="byte"
-                }
-              )
+            label_replace(
+              (
+                sum by (namespace, pod) (
+                  container_memory_working_set_bytes{
+                    namespace=~"voting-(staging|prod)",
+                    pod=~"vote-deployment-.*",
+                    container="vote-container"
+                  }
+                )
+                /
+                sum by (namespace, pod) (
+                  kube_pod_container_resource_requests{
+                    namespace=~"voting-(staging|prod)",
+                    pod=~"vote-deployment-.*",
+                    container="vote-container",
+                    resource="memory",
+                    unit="byte"
+                  }
+                )
+              ),
+              "target_namespace",
+              "$1",
+              "namespace",
+              "(voting-(staging|prod))"
             ) > 0.80
           for: 10m
           labels:
             severity: warning
             component: vote
+            namespace: monitoring
           annotations:
-            summary: "Vote frontend memory usage is high"
-            description: "Vote frontend memory usage is above 80% of its requested memory for more than 10 minutes."
+            summary: "Vote frontend memory is high in {{ $labels.target_namespace }}"
+            description: "Vote frontend pod {{ $labels.pod }} in {{ $labels.target_namespace }} is using more than 80% of its requested memory for more than 10 minutes."
 
         - alert: VoteFrontendPodRestarting
           expr: |
-            increase(
-              kube_pod_container_status_restarts_total{
-                namespace=~"voting-(staging|prod)",
-                pod=~"vote-deployment-.*"
-              }[10m]
+            label_replace(
+              sum by (namespace, pod) (
+                increase(
+                  kube_pod_container_status_restarts_total{
+                    namespace=~"voting-(staging|prod)",
+                    pod=~"vote-deployment-.*",
+                    container="vote-container"
+                  }[10m]
+                )
+              ),
+              "target_namespace",
+              "$1",
+              "namespace",
+              "(voting-(staging|prod))"
             ) > 3
-          for: 1m
+          for: 3m
           labels:
             severity: warning
             component: vote
+            namespace: monitoring
           annotations:
-            summary: "Vote frontend pod is restarting"
-            description: "The Vote frontend pod has restarted more than 3 times in the last 10 minutes."
+            summary: "Vote frontend pod is restarting in {{ $labels.target_namespace }}"
+            description: "Vote frontend pod {{ $labels.pod }} in {{ $labels.target_namespace }} has restarted more than 3 times in the last 10 minutes."
