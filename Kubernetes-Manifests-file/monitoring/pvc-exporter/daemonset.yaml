@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: local-pvc-exporter
+  namespace: monitoring
+  labels:
+    app: local-pvc-exporter
+
+spec:
+  selector:
+    matchLabels:
+      app: local-pvc-exporter
+
+  template:
+    metadata:
+      labels:
+        app: local-pvc-exporter
+
+    spec:
+      serviceAccountName: local-pvc-exporter
+
+      containers:
+        - name: local-pvc-exporter
+          image: ghcr.io/alvarorg14/local-pvc-exporter:0.3.1
+          imagePullPolicy: IfNotPresent
+
+          args:
+            - --metric-prefix=local_pvc
+            - --scrape-interval=5m
+            - --unit=bytes
+            - --listen-address=:8080
+            - --host-root=/host
+            - --du-concurrency=4
+            - --du-timeout=10m
+
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+
+          ports:
+            - name: metrics
+              containerPort: 8080
+              protocol: TCP
+
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+              add:
+                - DAC_READ_SEARCH
+
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 128Mi
+
+          volumeMounts:
+            - name: host-root
+              mountPath: /host
+              readOnly: true
+
+      volumes:
+        - name: host-root
+          hostPath:
+            path: /
+            type: Directory
+
+      tolerations:
+        - operator: Exists

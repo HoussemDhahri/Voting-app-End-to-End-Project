@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: local-pvc-exporter
+  namespace: monitoring
+  labels:
+    app: local-pvc-exporter
+
+spec:
+  selector:
+    app: local-pvc-exporter
+
+  ports:
+    - name: metrics
+      port: 8080
+      targetPort: metrics
+      protocol: TCP
