@@ -15,7 +15,7 @@ resources:
 images:
 - name: houssemdhahri93/voting-result
   newName: houssemdhahri93/voting-result
-  newTag: v1.2.1
+  newTag: v1.2.2
 - name: houssemdhahri93/voting-vote
   newName: houssemdhahri93/voting-vote
   newTag: v1.2.1
