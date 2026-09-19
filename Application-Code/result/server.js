@@ -270,6 +270,37 @@ function collectVotesFromResult(result){
 
 
 
+
+// ==========================
+// Result Page
+// ==========================
+
+app.get('/',(req,res)=>{
+
+
+  resultRequestsCounter.inc();
+
+
+  res.sendFile(
+
+    path.join(
+
+      __dirname,
+
+      'views',
+
+      'index.html'
+
+    )
+
+  );
+
+
+});
+
+
+
+
 // ==========================
 // Middleware
 // ==========================
@@ -331,36 +362,6 @@ app.get('/metrics',async(req,res)=>{
   res.end(
 
     await register.metrics()
-
-  );
-
-
-});
-
-
-
-
-// ==========================
-// Result Page
-// ==========================
-
-app.get('/',(req,res)=>{
-
-
-  resultRequestsCounter.inc();
-
-
-  res.sendFile(
-
-    path.join(
-
-      __dirname,
-
-      'views',
-
-      'index.html'
-
-    )
 
   );
 
