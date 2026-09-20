@@ -5,15 +5,18 @@ metadata:
   name: result-service
   labels:
     app: result-app
+  annotations:
+    traefik.ingress.kubernetes.io/service.sticky.cookie: "true"
+    traefik.ingress.kubernetes.io/service.sticky.cookie.name: "result-sticky"
 
 spec:
   selector:
     app: result-app
-
+    
   ports:
     - name: http
       protocol: TCP
       port: 4000
       targetPort: 4000
-      
+
   type: ClusterIP

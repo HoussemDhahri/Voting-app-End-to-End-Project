@@ -21,5 +21,5 @@ spec:
   targets:
     staticConfig:
       static:
-        - http://result-service.voting-staging.svc:4000/
-        - http://result-service.voting-prod.svc:4000/
+        - http://result-service.voting-staging.svc:4000/health
+        - http://result-service.voting-prod.svc:4000/health
