@@ -1,0 +1,54 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: voting-loadgenerator-job
+  annotations:
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
+
+spec:
+  backoffLimit: 0
+
+  template:
+    metadata:
+      labels:
+        app: loadgenerator
+
+    spec:
+      restartPolicy: Never
+
+      containers:
+        - name: k6
+          image: grafana/k6:latest
+          imagePullPolicy: Always
+
+          envFrom:
+            - configMapRef:
+                name: voting-loadgenerator-config
+
+          command:
+            - k6
+
+          args:
+            - run
+            - /scripts/loadtest.js
+
+          volumeMounts:
+            - name: loadtest-script
+              mountPath: /scripts
+
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "64Mi"
+            limits:
+              cpu: "300m"
+              memory: "128Mi"
+
+      volumes:
+        - name: loadtest-script
+          configMap:
+            name: voting-loadgenerator-config
+            items:
+              - key: loadtest.js
+                path: loadtest.js

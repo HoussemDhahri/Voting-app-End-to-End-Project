@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: voting-loadgenerator-config
+
+data:
+  VOTE_SERVICE_ADDR: "vote-service:5000"
+  RESULT_SERVICE_ADDR: "result-service:4000"
+  USERS: "10"
+
+  loadtest.js: |
+    import http from 'k6/http';
+    import { sleep } from 'k6';
+
+    export const options = {
+      vus: Number(__ENV.USERS || 10),
+      duration: '5m',
+    };
+
+    export default function () {
+
+      // Real vote traffic
+      const vote = Math.random() < 0.5 ? 'a' : 'b';
+
+      http.post(
+        `http://${__ENV.VOTE_SERVICE_ADDR}/`,
+        {
+          vote: vote,
+        }
+      );
+
+      // Result traffic
+      http.get(
+        `http://${__ENV.RESULT_SERVICE_ADDR}/`
+      );
+
+      sleep(1);
+    }
